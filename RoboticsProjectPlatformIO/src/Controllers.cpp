@@ -109,30 +109,10 @@ void Controllers::moveDistance(float target, bool forward) {
         Serial.println("MOVING");
         float traveled = ((motors.getDistanceA() - startDistanceA) + (motors.getDistanceB() - startDistanceB)) / 2.0f;
         float error = distanceTarget - traveled;
-        // float speed = error * Kp_distance;
-
-        // if (speed > 1.0f) speed = 1.0f;
-        // if (speed < 0.0f) speed = 0.0f;
-
 
         const float maxSpeed =  1.0f;
         const float accelDist = 40.0f;
         const float decelDist = 120.0f;
-
-        // float speed;
-        // if (movingForward) {
-        //   motors.setDirection(1,1);
-        // } else {
-        //   motors.setDirection(0,0);
-        // }
-
-        // if (speed < minTurnSpeed) speed = minTurnSpeed;
-        // motors.setTargetSpeed(speed);
-        
-        // if (fabs(error) < 5.0f) {
-        //   motors.stop();
-        //   controllerState = IDLE;
-        // }
 
         float speed = calculateTrapezoidalSpeed(traveled, maxSpeed, accelDist, decelDist, error);
 
@@ -149,9 +129,6 @@ void Controllers::moveDistance(float target, bool forward) {
     
       case TURNING: {
         Serial.println("TURNING");
-        // get differential for turn calc
-        // as delta increase -> clockwise,      as delta decreases -> anticlockwise
-        // float delta = (motors.getDistanceA() - startDistanceA) - (motors.getDistanceB() - startDistanceB);
 
         float traveled = ((motors.getDistanceA() - startDistanceA) + (motors.getDistanceB() - startDistanceB)) / 2.0f;
         float error = distanceTarget - traveled;
@@ -169,11 +146,7 @@ void Controllers::moveDistance(float target, bool forward) {
         const float decelDist = 50.0f;
 
         float speed = calculateTrapezoidalSpeed(traveled, maxSpeed, accelDist, decelDist, error);
-        // float speed = error * Kp_angle;
 
-        // if (speed > maxTurnSpeed) speed = maxTurnSpeed;
-        // if (speed < minTurnSpeed) speed = minTurnSpeed;
-        
         motors.setTargetSpeed(speed);
 
        
@@ -192,32 +165,8 @@ void Controllers::moveDistance(float target, bool forward) {
         // Serial.println("IDLE");
         motors.stop();
         break;
-    
-    
     }
-
-    // Serial.println((String)"Controller state: " + controllerState);
     motors.update();
-
-    // float distA = fabs(motors.getDistanceA() - startDistanceA);
-    // float distB = fabs(motors.getDistanceB() - startDistanceB);
-    // float avg = (distA + distB) / 2.0f;
-
-    // if (controllerState == TURNING) {
-    //   if (avg >= distanceTarget) {
-    //     motors.stop();
-    //     controllerState = IDLE; 
-    //   }
-    //   else {
-    //     Serial.println("Not close enough to turn goal!");
-    //   }
-    // }
-    // float avg_traveled = ((motors.getDistanceA() - startDistanceA) + (motors.getDistanceB() - startDistanceB)) / 2.0f;
-    // Serial.println((String)"Avg traveled: ?" + avg_traveled + "Distance Target: "+ distanceTarget);
-    // if (avg_traveled >= distanceTarget) {
-    //   Serial.println("IF stament hit STOPPING motors !");
-    //   motors.stop();
-    // }
   }
 
   void reset() {
