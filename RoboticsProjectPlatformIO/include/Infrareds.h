@@ -10,7 +10,8 @@ class Infrareds{
         Infrareds();
         void runtime();
 
-        float distances[4];
+        float* getDistances();
+        
 
     private:
 
@@ -22,6 +23,7 @@ class Infrareds{
         const char MUX_ADDR = 0xEE;
 
         char data[2];
+        float distances[4];
 };
 
 

@@ -90,6 +90,7 @@ void Motors::setDirection(int leftdir, int rightdir) {
 
 void Motors::stop(){
     // leaves stateChange to targetspeed
+    // Serial.println("SToppinger");
     targetSpeed = 0.0f;
     setTargetSpeed(0.0f);
 }
@@ -139,7 +140,7 @@ void Motors::handleRampUp() {
         currentSpeed += step;
     // } 
 
-    Serial.print((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
+    // Serial.print((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
     if (currentSpeed >= targetSpeed) {
         currentSpeed = targetSpeed;
         motorState = RUNNING;
@@ -153,7 +154,7 @@ void Motors::handleRampDown() {
     // if (currentSpeed > targetSpeed) {
         currentSpeed -= step;
     // } 
-    Serial.println((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
+    // Serial.println((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
     if (currentSpeed <= targetSpeed) {
         // Serial.println("First if");
         currentSpeed = targetSpeed;
@@ -208,7 +209,7 @@ void Motors::handleRunning() {
     setTargetSpeed(currentSpeed);
     // MotorASpeed.write(currentSpeed);
     // MotorBSpeed.write(currentSpeed);
-    Serial.println((String)"Current speed: " + currentSpeed);
+    // Serial.println((String)"Current speed: " + currentSpeed);
 }
 
 void Motors::handleStopped() {

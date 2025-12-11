@@ -17,6 +17,7 @@ class Motors{
         float getDistanceA();
         float getDistanceB();
 
+
     private:
         // attributes
         mbed::DigitalOut MotorADir;
@@ -50,7 +51,7 @@ class Motors{
         int desiredRightDir;
         bool isChangingDir = false;
 
-        bool printStatement = true;
+        bool printStatement = false;
 
         //control
         float Kp = 0.01f; // proportional gain

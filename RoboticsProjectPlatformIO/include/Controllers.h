@@ -18,14 +18,17 @@ class Controllers{
         float maxTurnSpeed;
         float minTurnSpeed;
 
+        bool obstacleDetected;
+
         const float trackWidth = 110.0f;
 
-        bool printStates = true;
+        bool printStates = false;
 
         enum STATES {
             IDLE,
             MOVING,
-            TURNING
+            TURNING,
+            CONTINUOUS
         };
 
         STATES controllerState = IDLE;
@@ -37,10 +40,15 @@ class Controllers{
         Motors &motors;
 
     public:
-        Controllers(Motors &motor);
+        Controllers(Motors &motor); 
         void moveDistance(float target, bool forward);
         void turnDegrees(float angle);
         void update();
+        void setObstacleDetected(bool flag);
+        void moveContinuous(bool forward, float speed = 0.7f);
+        bool isIdle();
+        float getAvgDistance();
+        
         
 };
 

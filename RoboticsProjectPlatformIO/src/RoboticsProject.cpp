@@ -4,6 +4,9 @@
 #include <Infrareds.h>
 #include <Ultrasonics.h>
 #include <Controllers.h>
+#include <Exploration.h>
+#include <Sensors.h>
+#include <mbed.h>
 // using namespace mbed;
 
 mbed::DigitalIn JoystickUp(P0_28);
@@ -13,12 +16,16 @@ mbed::InterruptIn JoystickRight(P0_3);
 
 bool print_data = 0;
 bool forwardFlag = 0;
+static bool explorationActive = false;
 
 Motors motors;
 Infrareds IR;
 Ultrasonics US;
+Sensors sensors(US, IR);
 
 Controllers Controller(motors);
+
+Exploration Explorer(sensors, Controller);
 
 
 void setup() {
@@ -28,29 +35,21 @@ void setup() {
   
 }
 
-
 void loop() {
 
+  sensors.update();
 
-  IR.runtime();
+  // Serial.println((String)"Front: "+sensors.getFrontDist() + " RightIR: " + sensors.getRightDist_IR());
 
-  if (print_data) {
-    Serial.println((String) "Distance 1: " + IR.distances[0] + "\r\nDistance 2: " + IR.distances[1] + "\r\nDistance 3: " + IR.distances[2] + "\r\nDistance 4: " + IR.distances[3]);
-  }
-
-  // US.runtime(0);
-  // US.runtime(1);
-
-
-
-  // float front = IR::distances[0];
-  // float left = US.distances[1];
-  // float right = US.distances[0];
-  float front = IR.distances[0];
+  Explorer.update();
 
   // else motors.stop();
-  if (JoystickUp == 0) {
-    Controller.moveDistance(300.0, true);
+  if (JoystickUp == 0/* && !explorationActive*/) {
+    // Controller.moveDistance(300.0, true);
+    static int count = 0;
+    Serial.println((String)"StartExploring called " + (++count) + " times");
+    Explorer.startExploring();
+    // explorationActive = true;
   }
   if (JoystickDown == 0) {
     // Controllers::moveDistance(300.0, false);

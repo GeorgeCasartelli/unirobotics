@@ -29,5 +29,8 @@ void Infrareds::runtime() {
     }
 }
 
+float* Infrareds::getDistances() {
+    return distances;
+}
 
 

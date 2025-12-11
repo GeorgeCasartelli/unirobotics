@@ -7,7 +7,7 @@ Controllers::Controllers(Motors &motor)
     : motors(motor)  // initialize the member with the external Motors object
 {
     // Initialize controller parameters
-    maxTurnSpeed = 0.7f;
+    maxTurnSpeed = 0.6f;
     minTurnSpeed = 0.2f;
 
     distanceTarget = 0.0f;
@@ -19,7 +19,8 @@ Controllers::Controllers(Motors &motor)
     startAngle = 0.0f;
 
     controllerState = IDLE;
-    printStates = true;
+
+    obstacleDetected = false;
 }
 
 void Controllers::moveDistance(float target, bool forward) {
@@ -56,7 +57,7 @@ void Controllers::moveDistance(float target, bool forward) {
 
     controllerState = TURNING;
     
-    Serial.println((String)"Turn degrees variables: \r\n  startDistanceA and B" + startDistanceA + "   " + startDistanceB + "\r\n  DistanceTarget: " + distanceTarget);
+    Serial.println((String)"Turn degrees variables: \r\n  startDistanceA and B: " + startDistanceA + "   " + startDistanceB + "\r\n  DistanceTarget: " + distanceTarget);
 
     if (angle > 0) {
       motors.setDirection(1,0);
@@ -94,9 +95,15 @@ void Controllers::moveDistance(float target, bool forward) {
             case IDLE: return "IDLE";
             case MOVING: return "MOVING";
             case TURNING: return "TURNING";
+            case CONTINUOUS: return "CONTINUOUS";
             default: return "UNKNOWN";
         };
     }
+
+  bool Controllers::isIdle() {
+    return controllerState == IDLE;
+  }
+
   void Controllers::update(){
     
     if (stateToString(controllerState) != "IDLE") {
@@ -123,17 +130,17 @@ void Controllers::moveDistance(float target, bool forward) {
           controllerState = IDLE;
           Serial.println((String)"Done! Final error: " + error);
         }
-        Serial.println((String)"Err=" + error + " Spd=" + speed + " Trav=" + traveled);
+        // Serial.println((String)"Err=" + error + " Spd=" + speed + " Trav=" + traveled);
     
       } break;
     
       case TURNING: {
-        Serial.println("TURNING");
+        // Serial.println("TURNING");
 
         float traveled = ((motors.getDistanceA() - startDistanceA) + (motors.getDistanceB() - startDistanceB)) / 2.0f;
         float error = distanceTarget - traveled;
 
-        if (error <= 0.0f) {
+        if (error <= 0.5f) {
           motors.stop();
           controllerState = IDLE;
           Serial.println((String)"Turn complete! Error: "+error);
@@ -141,9 +148,9 @@ void Controllers::moveDistance(float target, bool forward) {
           break;
         }
 
-        const float maxSpeed =  0.6f;
-        const float accelDist = 20.0f;
-        const float decelDist = 50.0f;
+        const float maxSpeed =  0.8f;
+        const float accelDist = 10.0f;
+        const float decelDist = 40.0f;
 
         float speed = calculateTrapezoidalSpeed(traveled, maxSpeed, accelDist, decelDist, error);
 
@@ -159,14 +166,44 @@ void Controllers::moveDistance(float target, bool forward) {
 
         break;
       };
+      
+      case CONTINUOUS: {
+        motors.setTargetSpeed(0.7f);
+        // Serial.println("CONTINUOUS");
+        if (obstacleDetected) {
+          Serial.println("Obstacle detectered");
+          motors.stop();
+          controllerState = IDLE;
+          obstacleDetected = false;
+        }
+        break;
+      }
 
-      case IDLE: 
-      default:
+
+      case IDLE: {
         // Serial.println("IDLE");
         motors.stop();
         break;
+      }
     }
     motors.update();
+  }
+
+  void Controllers::moveContinuous(bool forward, float speed) {
+    forward ? motors.setDirection(1,1) : motors.setDirection(0,0);
+    motors.setTargetSpeed(speed);
+
+    Serial.println((String)"Received movement cmd. forward: " + forward + " speed: " + speed);
+    controllerState = CONTINUOUS;
+  }
+
+  void Controllers::setObstacleDetected(bool flag) {
+    Serial.println("OBSTACLE DETECTED IN CONTROLLER");
+    obstacleDetected = flag;
+  }
+
+  float Controllers::getAvgDistance() {
+    return (motors.getDistanceA() + motors.getDistanceB()) / 2.0f;
   }
 
   void reset() {
