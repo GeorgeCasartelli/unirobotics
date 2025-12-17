@@ -16,6 +16,7 @@ class Exploration {
       APPROACHING_WALL,
       ALIGN_WITH_WALL,
       FOLLOWING_WALL,
+      TEST,
       GAP_DETECTED,
       TURNING_RIGHT,
       TURNING_LEFT,
@@ -35,6 +36,8 @@ class Exploration {
     float rightWallThreshold;
     float gapThreshold;
     float frontBlockedThreshold;
+
+    int alignAttempts;
     
 
     void setState(ExplorationStates state);

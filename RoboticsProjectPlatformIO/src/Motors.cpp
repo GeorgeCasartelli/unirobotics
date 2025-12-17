@@ -19,11 +19,15 @@ EncB(P1_12)
 
     EncCountA = 0;
     EncCountB = 0;
-    desiredSpeed = 0.0f;
-    currentSpeed = 0.0f;
-    targetSpeed = 0.0f;
+    
+    currentSpeedLeft = 0.0f;
+    targetSpeedLeft = 0.0f;
 
-    step = 0.005f;
+    currentSpeedRight = 0.0f;
+    targetSpeedRight = 0.0f;
+
+    stepLeft = 0.005f;
+    stepRight = 0.005f;
     pendingSpeedChange = false;
     pendingSpeed = 0.0f;
     currentLeftDir = 0;
@@ -48,31 +52,23 @@ void Motors::setup(mbed::InterruptIn &interrupt) {
     interrupt.fall(mbed::callback(this, &Motors::emergencyStop));
 }  
 
-void Motors::setTargetSpeed(float speed) {
-    // Serial.println((String)"setTargetSpeed called while state = " + motorState);
+void Motors::setTargetSpeeds(float left, float right) {
+    targetSpeedLeft = left;
+    targetSpeedRight = right;
 
-    // if (motorState == CHANGING_DIR) {
-    //   pendingSpeed = speed;
-    //   pendingSpeedChange = true;
-    //   return;
-    // }
-
-    // // Serial.println((String)"Speed set to: "+ speed);
-    // desiredSpeed = speed;
-    // targetSpeed = desiredSpeed;
-    targetSpeed = speed;
-    // if interrupt has caused state change
     if (motorState == CHANGING_DIR || motorState == EMERGENCY) return;
 
-    if (speed > currentSpeed) {
-      motorState = RAMP_UP;
-    } else if (speed < currentSpeed) {
-      motorState = RAMP_DOWN;
-    } else if (speed == 0.0f) {
-      motorState = STOPPED;
+    float avgTarget = (left + right) / 2.0f;
+    float avgCurrent = (currentSpeedLeft + currentSpeedRight) / 2.0f;
+
+    if (avgTarget > avgCurrent) {
+        motorState = RAMP_UP;
+    } else if (avgTarget < avgCurrent) {
+        motorState = RAMP_DOWN;
+    } else if (avgTarget == 0.0f) {
+        motorState = STOPPED;
     }
-    
-  }
+}
 
 void Motors::setDirection(int leftdir, int rightdir) {
     // Motor A is Left Motor B is right
@@ -84,24 +80,28 @@ void Motors::setDirection(int leftdir, int rightdir) {
 
     // if (directionChange) {
     motorState = CHANGING_DIR;
-    targetSpeed = 0.0f;
+    targetSpeedLeft = 0.0f;
+    targetSpeedRight = 0.0f;
     // } 
 }
 
 void Motors::stop(){
     // leaves stateChange to targetspeed
     // Serial.println("SToppinger");
-    targetSpeed = 0.0f;
-    setTargetSpeed(0.0f);
+    targetSpeedLeft = 0.0f;
+    targetSpeedRight = 0.0f;
+    setTargetSpeeds(0.0f, 0.0f);
 }
 
 
 void Motors::emergencyStop() {
     motorState = EMERGENCY;
-    currentSpeed = 0.0f;
-    targetSpeed = 0.0f;
-    MotorBSpeed.write(currentSpeed);
-    MotorASpeed.write(currentSpeed);
+    currentSpeedLeft = 0.0f;
+    currentSpeedRight = 0.0f;
+    targetSpeedLeft = 0.0f;
+    targetSpeedRight = 0.0f;
+    MotorBSpeed.write(currentSpeedRight);
+    MotorASpeed.write(currentSpeedLeft);
 };
 
 
@@ -135,46 +135,68 @@ void Motors::countPulseB() {
 }
 
 void Motors::handleRampUp() {
-    // if (currentSpeed < targetSpeed) {
-        // dont go above target
-        currentSpeed += step;
-    // } 
-
-    // Serial.print((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
-    if (currentSpeed >= targetSpeed) {
-        currentSpeed = targetSpeed;
-        motorState = RUNNING;
+    if (currentSpeedLeft < targetSpeedLeft) {
+        currentSpeedLeft += stepLeft;
+        if (currentSpeedLeft >= targetSpeedLeft) {
+            currentSpeedLeft = targetSpeedLeft;
+        }
     }
 
-    MotorASpeed.write(currentSpeed);
-    MotorBSpeed.write(currentSpeed);
+    if (currentSpeedRight < targetSpeedRight) {
+        currentSpeedRight += stepRight;
+        if (currentSpeedRight >= targetSpeedRight) {
+            currentSpeedRight = targetSpeedRight;
+        }
+    }
+
+    MotorASpeed.write(targetSpeedLeft);
+    MotorBSpeed.write(targetSpeedRight);
+
+    if (currentSpeedLeft >= targetSpeedLeft && currentSpeedRight >= targetSpeedRight) {
+        motorState = RUNNING;
+    }
 }
 
 void Motors::handleRampDown() {
-    // if (currentSpeed > targetSpeed) {
-        currentSpeed -= step;
-    // } 
-    // Serial.println((String)"CurrentSPeed = " + currentSpeed + " and current step = "+ step);
-    if (currentSpeed <= targetSpeed) {
-        // Serial.println("First if");
-        currentSpeed = targetSpeed;
-        
-        // Serial.println("Second if, setting state to STOPPED");
-        motorState = currentSpeed == 0.0f ? STOPPED : RUNNING;
+    if (currentSpeedLeft > targetSpeedLeft) {
+        currentSpeedLeft -= stepLeft;
+        if (currentSpeedLeft <= targetSpeedLeft) {
+            currentSpeedLeft = targetSpeedLeft;
+        }
     }
 
-    MotorASpeed.write(currentSpeed);
-    MotorBSpeed.write(currentSpeed);
+    if (currentSpeedRight > targetSpeedRight) {
+        currentSpeedRight -= stepRight;
+        if (currentSpeedRight <= targetSpeedRight) {
+            currentSpeedRight = targetSpeedRight;
+        }
+    }
+
+    MotorASpeed.write(targetSpeedLeft);
+    MotorBSpeed.write(targetSpeedRight);
+
+    if (currentSpeedLeft <= targetSpeedLeft && currentSpeedRight <= targetSpeedRight) {
+        bool bothStopped = (currentSpeedLeft == 0.0f && currentSpeedRight == 0.0f);
+        motorState = bothStopped ? STOPPED : RUNNING;
+    }
 }
 
 void Motors::handleChangingDir() {
     // speed down
-    if (currentSpeed > 0.0f) {
-        currentSpeed -= step;
-        MotorASpeed.write(currentSpeed);
-        MotorBSpeed.write(currentSpeed);
+    if (currentSpeedLeft > 0.0f || currentSpeedRight > 0.0f) {
+        if (currentSpeedLeft > 0.0f) {
+            currentSpeedLeft -= stepLeft;
+            if (currentSpeedLeft < 0.0f) currentSpeedLeft = 0.0f;
+        }
+        if (currentSpeedRight > 0.0f) {
+            currentSpeedRight -= stepRight;
+            if (currentSpeedRight < 0.0f) currentSpeedRight = 0.0f;
+        }
+        MotorASpeed.write(currentSpeedLeft);
+        MotorBSpeed.write(currentSpeedRight);
         return;
     }
+    
     // apply new directions when stopped
     currentLeftDir = desiredLeftDir;
     currentRightDir = desiredRightDir;
@@ -182,53 +204,52 @@ void Motors::handleChangingDir() {
     MotorADir = (currentLeftDir * -1) + 1;
     MotorBDir = currentRightDir;
 
-    // check for pending speed then ramp up or stay idle
-    if (pendingSpeedChange) {
-        pendingSpeedChange = false;
-        motorState = STOPPED; // set to stopped so targetSpeed runs
-        setTargetSpeed(pendingSpeed); // ramp up again
-    } else {
-        motorState = STOPPED;
-    }
+    motorState = STOPPED;
 }
 
 void Motors::handleRunning() { 
 
+    float avgCurrent = (currentSpeedLeft + currentSpeedRight) / 2.0f;
+    float avgTarget = (targetSpeedLeft + targetSpeedRight) / 2.0f;
     // check if state needs to change, else remain at current speed
-    if (currentSpeed < targetSpeed) {
+
+    if (avgCurrent < avgTarget) {
         // targetSpeed = desiredSpeed;
         motorState = RAMP_UP;
     }
-    if (currentSpeed > targetSpeed) {
+    if (avgCurrent> avgTarget) {
         // targetSpeed = desiredSpeed;
         motorState = RAMP_DOWN;
     }
     // reinforce
     
-    currentSpeed = targetSpeed;
-    setTargetSpeed(currentSpeed);
-    // MotorASpeed.write(currentSpeed);
-    // MotorBSpeed.write(currentSpeed);
+    currentSpeedLeft = targetSpeedLeft;
+    currentSpeedRight = targetSpeedRight;
+    // setTargetSpeeds(currentSpeedLeft, currentSpeedRight);
+    MotorASpeed.write(currentSpeedLeft);
+    MotorBSpeed.write(currentSpeedRight);
     // Serial.println((String)"Current speed: " + currentSpeed);
 }
 
 void Motors::handleStopped() {
     
-    currentSpeed = 0.0f;
+    currentSpeedLeft = 0.0f;
+    currentSpeedRight = 0.0f;
     // reinforce speeds
     MotorASpeed.write(0.0f);
     MotorBSpeed.write(0.0f);
-    if (desiredSpeed > 0.0f) {
+
+    if (targetSpeedLeft > 0.0f || targetSpeedRight > 0.0f) { 
         motorState = RAMP_UP;
     }
 }
 
 
 void Motors::handleEmergency() {
-    currentSpeed = 0.0f;
-    targetSpeed = 0.0f;
-    MotorASpeed.write(currentSpeed);
-    MotorBSpeed.write(currentSpeed);
+    currentSpeedLeft = 0.0f;
+    targetSpeedRight = 0.0f;
+    MotorASpeed.write(currentSpeedLeft);
+    MotorBSpeed.write(currentSpeedRight);
 }
 
 const char* Motors::stateToString(STATES s) {
@@ -249,9 +270,13 @@ void Motors::update() {
         if (printStatement) Serial.println((String)"Motor State: " + stateToString(motorState));
     }
     
-    float diff = fabs(targetSpeed - currentSpeed);
-    step = diff * 0.1f; // step is 20% of difference
-    if (step < 0.01f) step = 0.01f;
+
+    float diffLeft = fabs(targetSpeedLeft - currentSpeedRight);
+    float diffRight = fabs(targetSpeedRight - currentSpeedRight);
+    stepLeft = diffLeft * 0.2f; // step is 20% of difference
+    stepRight = diffRight * 0.2;
+    // if (step < 0.01f) step = 0.01f;
+    // step = 0.2;
 
     switch (motorState) {
         case RUNNING:
@@ -263,7 +288,7 @@ void Motors::update() {
         break;
         
         case RAMP_DOWN:
-        Serial.println((String)"Speed is "+ currentSpeed);
+        // Serial.println((String)"Speed is "+ currentSpeed);
         handleRampDown(); // done
         break;
 

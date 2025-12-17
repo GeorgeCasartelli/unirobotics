@@ -20,7 +20,7 @@ class Controllers{
 
         bool obstacleDetected;
 
-        const float trackWidth = 110.0f;
+        const float trackWidth = 115.0f;
 
         bool printStates = false;
 
@@ -35,9 +35,13 @@ class Controllers{
 
         const char* stateToString(STATES s);
 
-        float calculateTrapezoidalSpeed(float traveled, float maxSpeed, float accelDist, float decelDist, float error);
+        float calculateTrapezoidalSpeed(float traveled, float totalDistance, float maxSpeed);
         
         Motors &motors;
+
+        const float TARGET_WALL_DIST = 1500.0f;
+
+        float rightDistanceAvg;
 
     public:
         Controllers(Motors &motor); 
@@ -48,6 +52,8 @@ class Controllers{
         void moveContinuous(bool forward, float speed = 0.7f);
         bool isIdle();
         float getAvgDistance();
+        void wallFollow(float error, float baseSpeed, float Kp);
+        void updateRightWall(float val);
         
         
 };

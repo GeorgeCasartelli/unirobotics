@@ -37,7 +37,7 @@ void setup() {
 
 void loop() {
 
-  sensors.update();
+  // sensors.update();
 
   // Serial.println((String)"Front: "+sensors.getFrontDist() + " RightIR: " + sensors.getRightDist_IR());
 
@@ -46,8 +46,8 @@ void loop() {
   // else motors.stop();
   if (JoystickUp == 0/* && !explorationActive*/) {
     // Controller.moveDistance(300.0, true);
-    static int count = 0;
-    Serial.println((String)"StartExploring called " + (++count) + " times");
+    // static int count = 0;
+    // Serial.println((String)"StartExploring called " + (++count) + " times");
     Explorer.startExploring();
     // explorationActive = true;
   }
@@ -58,10 +58,10 @@ void loop() {
   if (JoystickLeft == 0) {
     Controller.turnDegrees(-90.0);
   }
-
+  // Serial.println("Blaaah"); 
   Controller.update();
-  if (print_data) {
-    wait_us(500000);
-  }
+  // if (print_data) {
+  //   wait_us(500000);
+  // }
 
 }

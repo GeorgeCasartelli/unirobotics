@@ -10,7 +10,7 @@ class Motors{
         Motors();
         void setup(mbed::InterruptIn &interrupt);
         void update();
-        void setTargetSpeed(float speed);
+        void setTargetSpeeds(float left, float right);
         void setDirection(int left, int right);
         void stop();
         void emergencyStop();
@@ -37,10 +37,17 @@ class Motors{
 
         const float wheelCircumferance = 3.14159f * 48;
 
-        float desiredSpeed;
-        float currentSpeed;
-        float targetSpeed;
-        float step;
+        // float currentSpeed;
+        // float targetSpeed;
+
+        float currentSpeedLeft;
+        float currentSpeedRight;
+        float targetSpeedLeft;
+        float targetSpeedRight;
+
+
+        float stepLeft;
+        float stepRight;
 
         bool pendingSpeedChange;
         float pendingSpeed;
@@ -51,7 +58,7 @@ class Motors{
         int desiredRightDir;
         bool isChangingDir = false;
 
-        bool printStatement = false;
+        bool printStatement = true;
 
         //control
         float Kp = 0.01f; // proportional gain
