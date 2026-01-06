@@ -37,7 +37,7 @@ void Sensors::update() {
     // }
     
 
-    Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
+    // Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
     addReading(rightIRs.front);
 }
 
@@ -68,7 +68,7 @@ float Sensors::getRightAvg() {
         for (int i = 0; i < BUFFER_SIZE; i++) { 
             sum+= distanceBufferIR[i]; 
         } 
-        Serial.println((String)distanceBufferIR[1]); 
+        // Serial.println((String)distanceBufferIR[1]); 
         return sum / BUFFER_SIZE; 
     } else { 
         return rightIRs.front; // else return reading 

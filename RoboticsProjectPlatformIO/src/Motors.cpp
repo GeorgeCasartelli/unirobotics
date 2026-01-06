@@ -12,32 +12,8 @@ MotorASpeed(P0_27),
 MotorBSpeed(P1_2),
 
 EncA(P1_11),
-EncB(P1_12)
-{
-    ShaftRevA = 0;
-    ShaftRevB = 0;
-
-    EncCountA = 0;
-    EncCountB = 0;
-    
-    currentSpeedLeft = 0.0f;
-    targetSpeedLeft = 0.0f;
-
-    currentSpeedRight = 0.0f;
-    targetSpeedRight = 0.0f;
-
-    stepLeft = 0.005f;
-    stepRight = 0.005f;
-    stepMin = 0.0005f;
-    pendingSpeedChange = false;
-    pendingSpeed = 0.0f;
-    currentLeftDir = 0;
-    desiredLeftDir = 0;
-    currentRightDir = 0;
-    desiredRightDir = 0;
-    isChangingDir = false;
-    
-};
+EncB(P1_12)  
+{ };
 
 // PUBLIC METHODS
 
@@ -51,6 +27,8 @@ void Motors::setup(mbed::InterruptIn &interrupt) {
     EncA.rise(mbed::callback(this, &Motors::countPulseA));
     EncB.rise(mbed::callback(this, &Motors::countPulseB));
     interrupt.fall(mbed::callback(this, &Motors::emergencyStop));
+
+    lastUpdateUs = micros();
 }  
 
 void Motors::setTargetSpeeds(float left, float right) {
@@ -61,7 +39,7 @@ void Motors::setTargetSpeeds(float left, float right) {
 
 }
 
-void Motors::setDirection(int leftdir, int rightdir) {
+void Motors::setDirection(int8_t leftdir, int8_t rightdir) {
     // Motor A is Left Motor B is right
     desiredLeftDir = leftdir;
     desiredRightDir = rightdir;
@@ -120,22 +98,69 @@ void Motors::countPulseB() {
 }
 
 
+void Motors::handleRunning() {
+    // calculate speed errors
+    float errorLeft = targetSpeedLeft - currentSpeedLeft;
+    float errorRight = targetSpeedRight - currentSpeedRight;
+
+    float accelL = (errorLeft > 0) ? maxAccel : maxDecel;
+    float accelR = (errorRight > 0) ? maxAccel : maxDecel;
+
+    float deltaL = accelL * dt;
+    float deltaR = accelR * dt;
+
+    float changeL = constrain(errorLeft, -deltaL, deltaL);
+    float changeR = constrain(errorRight, -deltaR, deltaR);
+
+    currentSpeedLeft += changeL;
+    currentSpeedRight += changeR;
+
+    constrainCurrentSpeeds();
+
+    MotorASpeed.write(currentSpeedLeft);
+    MotorBSpeed.write(currentSpeedRight);
+
+    bool atTarget = 
+        fabs(errorLeft)        < 0.00001f &&
+        fabs(errorRight)       < 0.00001f
+    ;
+
+    bool targetisZero = 
+        fabs(targetSpeedLeft)  < 0.00001f && 
+        fabs(targetSpeedRight) < 0.00001f
+    ;
+
+    if (atTarget && targetisZero) {
+        transitionTo(STOPPED);
+    }
+}
 
 void Motors::handleChangingDir() {
     // speed down
-    if (currentSpeedLeft > 0.0f || currentSpeedRight > 0.0f) {
-        if (currentSpeedLeft > 0.0f) {
-            currentSpeedLeft -= stepLeft;
-            if (currentSpeedLeft < 0.0f) currentSpeedLeft = 0.0f;
-        }
-        if (currentSpeedRight > 0.0f) {
-            currentSpeedRight -= stepRight;
-            if (currentSpeedRight < 0.0f) currentSpeedRight = 0.0f;
-        }
-        MotorASpeed.write(currentSpeedLeft);
-        MotorBSpeed.write(currentSpeedRight);
-        return;
+    float decelL = maxDecel * dt;
+    float decelR = maxDecel * dt;
+
+    bool moving = false;
+    
+    if (currentSpeedLeft > 0.0f) {
+        currentSpeedLeft -= decelL;
+        if (currentSpeedLeft < 0.0f) currentSpeedLeft = 0.0f;
+        moving = true;
     }
+
+    if (currentSpeedRight > 0.0f) {
+        currentSpeedRight -= decelR;
+        if (currentSpeedRight < 0.0f) currentSpeedRight = 0.0f;
+        moving = true;
+    }
+
+    constrainCurrentSpeeds();
+
+    MotorASpeed.write(currentSpeedLeft);
+    MotorBSpeed.write(currentSpeedRight);
+    
+    if (moving) return;
+    
 
     // apply new directions when stopped
     currentLeftDir = desiredLeftDir;
@@ -155,6 +180,13 @@ void Motors::handleStopped() {
 
 void Motors::handleEmergency() {
     //nothing to see here!
+
+}
+
+void Motors::constrainCurrentSpeeds(){
+    // function to clamp speeds between 0 and 1
+    currentSpeedLeft = constrain(currentSpeedLeft, 0.0f, 1.0f);
+    currentSpeedRight = constrain(currentSpeedRight, 0.0f, 1.0f);
 }
 
 const char* Motors::stateToString(STATES s) {
@@ -200,6 +232,16 @@ void Motors::onEnterState(STATES state) {
 }
 
 void Motors::update() {
+
+
+    //calculate dt
+    uint32_t now = micros();
+    dt = (now - lastUpdateUs) * 1e-6; //calculate dt in us
+    lastUpdateUs = now;
+
+    if (dt <= 0.0f || dt > 0.1f) { // keep above zero and ignore pauses
+        dt = 0.0f;
+    }
     // do entry work if state has changed
     if (motorState != prevState) {
         onEnterState(motorState);
@@ -210,19 +252,6 @@ void Motors::update() {
     if (motorState != STOPPED) {
         if (printStatement) Serial.println((String)"Motor State: " + stateToString(motorState));
     }
-    
-    
-    // calculate speed errors
-    float errorLeft = targetSpeedLeft - currentSpeedLeft;
-    float errorRight = targetSpeedRight - currentSpeedRight;
-
-    int leftFlag = errorLeft < 0 ? -1 : 1; // if less than zero, flag = -1
-    int rightFlag = errorRight < 0 ? -1 : 1;
-    // gives + or - step
-
-    // if error is less than min step, step = error, else is 20% of error
-    stepLeft = fabs(errorLeft) < stepMin ? fabs(errorLeft) : fabs(errorLeft) * 0.2f; 
-    stepRight = fabs(errorRight) < stepMin ? fabs(errorRight) : fabs(errorRight) * 0.2f;
 
 
     // Serial.println(
@@ -239,42 +268,18 @@ void Motors::update() {
 
     switch (motorState) {
         case RUNNING: {
-        // handleRunning(); // done
-            // float deltaLeft = constrain(stepLeft, 0.05, 0.15);
-            // float deltaRight = constrain(stepRight, 0.05, 0.15);
-
-            currentSpeedLeft += stepLeft * leftFlag; // apply + or - flag to ramp up/down
-            currentSpeedRight += stepRight * rightFlag;
-
-            MotorASpeed.write(currentSpeedLeft);
-            MotorBSpeed.write(currentSpeedRight);
-
-            auto near = [](float a, float b, float eps) {
-                return fabs(a - b) < eps;
-            };
-            bool atTarget = 
-                near(currentSpeedLeft, targetSpeedLeft, stepMin) && 
-                near(currentSpeedRight, targetSpeedRight, stepMin)
-            ;
-
-            bool targetisZero = (targetSpeedLeft == 0.0f) && (targetSpeedRight == 0.0f);
-
-            if (atTarget && targetisZero) {
-                transitionTo(STOPPED);
-            }
+            handleRunning(); // done
             break;
         }
 
         case STOPPED: {
-
-        handleStopped(); // done
-        break;
+            handleStopped(); // done
+            break;
         }
 
         case CHANGING_DIR: {
-
-        handleChangingDir(); 
-        break;
+            handleChangingDir();
+            break;
         }
         
         case EMERGENCY:{

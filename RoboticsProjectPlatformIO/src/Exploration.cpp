@@ -136,7 +136,7 @@ void Exploration::update() {
         } break;
 
         case TEST: {
-            Serial.println((String)"Front: " + rightFront + " Rear: " + rightRear);
+            // Serial.println((String)"Front: " + rightFront + " Rear: " + rightRear);
             break;
         }
         case GAP_DETECTED: {
