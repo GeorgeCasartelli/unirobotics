@@ -115,14 +115,14 @@ void Exploration::update() {
         }
 
         case FOLLOWING_WALL: {
-            // if (frontBlocked && rightGapExists) {
-            //     Serial.println("TURNING RIGHT");
-            //     explorationState = TURNING_RIGHT;
-            // }
-            // else if (frontBlocked) {
-            //     Serial.println("TURNING LEFT");
-            //     explorationState = TURNING_LEFT;
-            // }
+            if (frontBlocked && rightGapExists) {
+                Serial.println("TURNING RIGHT");
+                explorationState = TURNING_RIGHT;
+            }
+            else if (frontBlocked) {
+                Serial.println("TURNING LEFT");
+                explorationState = TURNING_LEFT;
+            }
             // else if (rightGapExists) {
             //     Serial.println("Gap on right!");
             //     gapDetectedDistance = Controller.getAvgDistance();
