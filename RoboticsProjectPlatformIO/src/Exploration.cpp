@@ -17,12 +17,13 @@ Exploration::Exploration(Sensors &sensors, Controllers &controller)
     rightWallThreshold = 15.0f;
     gapThreshold = 25.0f;
     frontBlockedThreshold = 12.0f;
+    alignAttempts = 0;
 
 }
 
 void Exploration::startExploring() {
-    explorationState = LOCATING_WALL;
-    // Controller.moveContinuous(true); 
+    explorationState = FOLLOWING_WALL;
+    Controller.moveContinuous(true); 
 }
 
 void Exploration::setState(ExplorationStates state) {
@@ -30,10 +31,12 @@ void Exploration::setState(ExplorationStates state) {
     explorationState = state;
 }
 void Exploration::update() {
+    sensors.update();
     float frontDist = sensors.getFrontDist();
     float rightDist = sensors.getRightDist();
     
     RightDistances right = sensors.getRightDist_IR();
+    
 
     float rightFront = right.front;
     float rightRear = right.rear;
@@ -41,8 +44,12 @@ void Exploration::update() {
     bool frontBlocked = frontDist < frontBlockedThreshold;
     bool rightGapExists = rightDist > gapThreshold;
     bool rightWallNear = rightDist < rightWallThreshold;
-    Serial.println((String)"State: "+ explorationState);
+
+    float rightAvg = sensors.getRightAvg();
+    // Serial.println((String)"State: "+ explorationState);
     // Serial.println((String)"Frontblocked: "+ frontBlocked + " frostDist: " + frontDist + " rightGapExists: " + rightGapExists + " rightWallNear: " + rightWallNear);
+
+    Controller.update();
 
     switch(explorationState) {
         case IDLE: {
@@ -80,6 +87,30 @@ void Exploration::update() {
 
         case ALIGN_WITH_WALL: {
             Serial.println((String)"Lets align!! rightFront: " + rightFront + " rightRear: " + rightRear);
+
+            float alignmentError = rightFront - rightRear;
+            float alignmentTolerance = 1.0f; // 1cm tolerance
+
+            if (fabs(alignmentError) < alignmentTolerance || alignAttempts >= 10) {
+                Serial.println((String)"Aligned! alignAttempts: " + alignAttempts);
+                alignAttempts = 0;
+                setState(FOLLOWING_WALL);
+                Controller.moveContinuous(true);
+                break;
+            }
+            if (!controllerBusy) {
+                float turnAngle = alignmentError * 0.05f;
+
+                if (fabs(turnAngle) > 2.0f) {
+                    Controller.turnDegrees(-turnAngle); // negative as value is opposite to alignment sign
+                    controllerBusy = true;
+                    alignAttempts++;
+                }
+
+            }
+            else if (Controller.isIdle()) {
+                controllerBusy = false;
+            }
             break;
         }
 
@@ -92,13 +123,22 @@ void Exploration::update() {
                 Serial.println("TURNING LEFT");
                 explorationState = TURNING_LEFT;
             }
-            else if (rightGapExists) {
-                Serial.println("Gap on right!");
-                gapDetectedDistance = Controller.getAvgDistance();
-                explorationState = GAP_DETECTED;
-            }
+            // else if (rightGapExists) {
+            //     Serial.println("Gap on right!");
+            //     gapDetectedDistance = Controller.getAvgDistance();
+            //     explorationState = GAP_DETECTED;
+            // }
+            
+            Serial.println((String)"RightAvg is: " + rightAvg);
+            // Serial.println((String)rightFront);
+            // Controller.moveContinuous(true); // should just run on its own 
+            Controller.updateRightWall(rightAvg);
         } break;
 
+        case TEST: {
+            Serial.println((String)"Front: " + rightFront + " Rear: " + rightRear);
+            break;
+        }
         case GAP_DETECTED: {
             Serial.println("GAP DETECTED... CHECKING IF REAL");
             float distanceTraveled = Controller.getAvgDistance() - gapDetectedDistance;
@@ -128,10 +168,12 @@ void Exploration::update() {
                 Serial.println("Turn done");
                 controllerBusy = false;
                 if (prevState != LOCATING_WALL) {
-                    setState(ALIGN_WITH_WALL);
-                    // Controller.moveContinuous(true);
+                    // setState(ALIGN_WITH_WALL);
+                    setState(FOLLOWING_WALL);
+                    Controller.moveContinuous(true);
                 } else {
                     setState(LOCATING_WALL);
+                    
                 }
             }
             break;
@@ -146,7 +188,9 @@ void Exploration::update() {
                 Serial.println("Turn done");
                 controllerBusy = false;
                 setState(ALIGN_WITH_WALL);
+                // setState(FOLLOWING_WALL);
                 Controller.moveContinuous(true);
+                alignAttempts = 0;
             }
             break;
         }

@@ -10,7 +10,7 @@ class Motors{
         Motors();
         void setup(mbed::InterruptIn &interrupt);
         void update();
-        void setTargetSpeed(float speed);
+        void setTargetSpeeds(float left, float right);
         void setDirection(int left, int right);
         void stop();
         void emergencyStop();
@@ -32,15 +32,22 @@ class Motors{
         long int ShaftRevA;
         long int ShaftRevB;
 
-        long int EncCountA;
-        long int EncCountB;
+        volatile long int EncCountA;
+        volatile long int EncCountB;
 
         const float wheelCircumferance = 3.14159f * 48;
 
-        float desiredSpeed;
-        float currentSpeed;
-        float targetSpeed;
-        float step;
+        // float currentSpeed;
+        // float targetSpeed;
+
+        float currentSpeedLeft;
+        float currentSpeedRight;
+        float targetSpeedLeft;
+        float targetSpeedRight;
+
+        float stepLeft;
+        float stepRight;
+        float stepMin;
 
         bool pendingSpeedChange;
         float pendingSpeed;
@@ -51,24 +58,31 @@ class Motors{
         int desiredRightDir;
         bool isChangingDir = false;
 
-        bool printStatement = false;
+        bool printStatement = true;
 
         //control
         float Kp = 0.01f; // proportional gain
 
         enum STATES {
             STOPPED,
-            RAMP_UP,
-            RAMP_DOWN,
+            // RAMP_UP,
+            // RAMP_DOWN,
             RUNNING,
             CHANGING_DIR,
             EMERGENCY
         };
 
         STATES motorState = STOPPED;
+        STATES prevState = STOPPED;
+
+        void transitionTo(STATES next);
+        void onEnterState(STATES state);
+
 
         const char* stateToString(STATES s);
 
+        // void ramp(float errorLeft, float errorRight);
+        void ramp();
         void countPulseA();
         void countPulseB();
         void handleRampUp();

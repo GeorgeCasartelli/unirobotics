@@ -23,6 +23,7 @@ public:
     float getLeftDist();
     RightDistances getRightDist_IR();
 
+    float getRightAvg();
     // String getValues() {
 
     // }
@@ -33,11 +34,19 @@ private:
 
     float distanceFront;
     float distanceRight;
+    
     float* distanceArray;
 
     RightDistances rightIRs;
     
+    int bufferIndex;
+    bool bufferFull;
 
+    static constexpr int BUFFER_SIZE = 20;
+
+    float distanceBufferIR[BUFFER_SIZE];
+
+    void addReading(float reading);
 };
 
 
