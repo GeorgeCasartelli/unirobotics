@@ -36,17 +36,17 @@ void Motors::setTargetSpeeds(float left, float right) {
         return;
     targetSpeedLeft = left;
     targetSpeedRight = right;
-
 }
 
 void Motors::setDirection(int8_t leftdir, int8_t rightdir) {
     // Motor A is Left Motor B is right
     desiredLeftDir = leftdir;
     desiredRightDir = rightdir;
- 
+    
     transitionTo(CHANGING_DIR);
     targetSpeedLeft = 0.0f;
     targetSpeedRight = 0.0f;
+    
 
 }
 
@@ -137,10 +137,12 @@ void Motors::handleRunning() {
 
 void Motors::handleChangingDir() {
     // speed down
+
     float decelL = maxDecel * dt;
     float decelR = maxDecel * dt;
 
     bool moving = false;
+
     
     if (currentSpeedLeft > 0.0f) {
         currentSpeedLeft -= decelL;
@@ -153,8 +155,8 @@ void Motors::handleChangingDir() {
         if (currentSpeedRight < 0.0f) currentSpeedRight = 0.0f;
         moving = true;
     }
-
-    constrainCurrentSpeeds();
+    
+    // constrainCurrentSpeeds();
 
     MotorASpeed.write(currentSpeedLeft);
     MotorBSpeed.write(currentSpeedRight);

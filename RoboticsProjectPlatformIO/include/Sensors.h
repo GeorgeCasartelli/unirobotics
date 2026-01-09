@@ -3,7 +3,7 @@
 
 #include <Ultrasonics.h>
 #include <Infrareds.h>
-
+#include <Gyro.h>
 
 
 struct RightDistances {
@@ -13,8 +13,9 @@ struct RightDistances {
 
 class Sensors {
 public:
-    Sensors(Ultrasonics &us, Infrareds &ir);
+    Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro);
 
+    void setup();
     void update();   // call every loop
 
     // Raw values (smoothed)
@@ -31,6 +32,7 @@ public:
 private:
     Ultrasonics &US;
     Infrareds &IR;
+    Gyro &GYRO;
 
     float distanceFront;
     float distanceRight;

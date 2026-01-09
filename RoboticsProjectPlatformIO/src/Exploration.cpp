@@ -22,8 +22,8 @@ Exploration::Exploration(Sensors &sensors, Controllers &controller)
 }
 
 void Exploration::startExploring() {
-    explorationState = FOLLOWING_WALL;
-    Controller.moveContinuous(true); 
+    explorationState = TEST;
+    // Controller.moveContinuous(true); 
 }
 
 void Exploration::setState(ExplorationStates state) {
@@ -137,61 +137,20 @@ void Exploration::update() {
 
         case TEST: {
             // Serial.println((String)"Front: " + rightFront + " Rear: " + rightRear);
+            
             break;
         }
         case GAP_DETECTED: {
-            Serial.println("GAP DETECTED... CHECKING IF REAL");
-            float distanceTraveled = Controller.getAvgDistance() - gapDetectedDistance;
-            if (distanceTraveled > confirmationDistance) {
-                explorationState = TURNING_RIGHT;
-                Serial.println("GAP DETECTED! SETTING TO TURNING RIGHT");
-            }
-            if (rightDist < gapThreshold) {
-                Serial.println("Aah shit theres a wall");
-                explorationState = FOLLOWING_WALL;
-            }
-            if (frontDist < frontBlockedThreshold) {
-                Serial.println("Front blocked while moving. Turning right");
-                explorationState = TURNING_RIGHT;
-            }
+
         } break;
             
 
         case TURNING_RIGHT:{
-            if (!controllerBusy) {
-                Controller.turnDegrees(90);
-                controllerBusy = true;
 
-                Serial.println("RIGHT TURN TRIG");
-            }
-            else if (Controller.isIdle()) {
-                Serial.println("Turn done");
-                controllerBusy = false;
-                if (prevState != LOCATING_WALL) {
-                    // setState(ALIGN_WITH_WALL);
-                    setState(FOLLOWING_WALL);
-                    Controller.moveContinuous(true);
-                } else {
-                    setState(LOCATING_WALL);
-                    
-                }
-            }
             break;
         }
         case TURNING_LEFT:{
-            if (!controllerBusy) {
-                Controller.turnDegrees(-90);
-                controllerBusy = true;
-                Serial.println("LEFT TURN TRIG");
-            }
-            else if (Controller.isIdle()) {
-                Serial.println("Turn done");
-                controllerBusy = false;
-                setState(ALIGN_WITH_WALL);
-                // setState(FOLLOWING_WALL);
-                Controller.moveContinuous(true);
-                alignAttempts = 0;
-            }
+
             break;
         }
 

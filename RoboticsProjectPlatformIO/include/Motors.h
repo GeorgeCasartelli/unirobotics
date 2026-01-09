@@ -50,7 +50,7 @@ class Motors{
         int8_t desiredLeftDir = 0;
         int8_t desiredRightDir = 0;
 
-        bool printStatement = true;
+        bool printStatement = false;
 
         //clock
         uint32_t lastUpdateUs = 0;
@@ -60,13 +60,8 @@ class Motors{
         float maxAccel = 1.2f; // 
         float maxDecel = 1.5f; // stronger breaking
 
-        //control
-        float Kp = 0.01f; // proportional gain
-
         enum STATES {
             STOPPED,
-            // RAMP_UP,
-            // RAMP_DOWN,
             RUNNING,
             CHANGING_DIR,
             EMERGENCY

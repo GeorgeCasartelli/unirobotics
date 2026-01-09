@@ -2,10 +2,13 @@
 
 #include <Ultrasonics.h>
 #include <Infrareds.h>
+#include <Gyro.h>
 
-Sensors::Sensors(Ultrasonics &us, Infrareds &ir) 
+
+Sensors::Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro) 
     : US(us),
-      IR(ir)
+      IR(ir),
+      GYRO(gyro)
 {
     // distanceRight = 0;
     // distanceFront = 0;
@@ -13,8 +16,13 @@ Sensors::Sensors(Ultrasonics &us, Infrareds &ir)
     bufferIndex = 0;
     bufferFull = false;
 }
+void Sensors::setup() {
+    US.setup();
+    GYRO.begin();
+}
 
 void Sensors::update() {
+    GYRO.update();
     US.runtime(0);
     US.runtime(1);
 
