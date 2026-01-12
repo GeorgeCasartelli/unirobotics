@@ -76,10 +76,10 @@ class Controllers{
         float goToHeading = 0.0f;
         float goToDistance = 0.0f;
 
-        void transitionTo(STATES next);
+        void setState(STATES next);
 
-        const char* stateToString(STATES s);
-
+        
+        void cancel();
         float calculateTrapezoidalSpeed(float traveled, float totalDistance, float maxSpeed);
         
         Motors &motors;
@@ -89,6 +89,16 @@ class Controllers{
 
         float rightDistanceAvg; 
 
+        const char* Controllers::stateToString(STATES s) {
+            switch (s) {
+                case IDLE: return "IDLE";
+                case MOVING: return "MOVING";
+                case TURNING: return "TURNING";
+                case GOTO: return "GOTO";
+                default: return "UNKNOWN";
+            };
+        }
+        
         float wrapPi(float angle) {
             while (angle > PI) angle -= 2.0f * PI;
             while (angle < PI) angle += 2.0f * PI;

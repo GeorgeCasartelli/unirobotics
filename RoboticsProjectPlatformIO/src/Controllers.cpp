@@ -81,21 +81,19 @@ void Controllers::moveDistance(float target, bool forward) {
     motors.setTargetSpeeds(0.5f, 0.5f);
   }
 
-  const char* Controllers::stateToString(STATES s) {
-      switch (s) {
-          case IDLE: return "IDLE";
-          case MOVING: return "MOVING";
-          case TURNING: return "TURNING";
-          case GOTO: return "GOTO";
-          default: return "UNKNOWN";
-      };
+  
+
+  void Controllers::cancel() {
+    motors.stop();
+    gotoStep = NONE;
+    setState(IDLE);
   }
 
   bool Controllers::isIdle() {
     return controllerState == IDLE;
   }
 
-  void Controllers::transitionTo(STATES next) {
+  void Controllers::setState(STATES next) {
     if (controllerState == next) return;
     prevState = controllerState;
     controllerState = next;
@@ -209,18 +207,18 @@ void Controllers::moveDistance(float target, bool forward) {
 
         if (fabs(error) < tolerance) {
           motors.stop();
-          transitionTo(IDLE);
+          setState(IDLE);
           break;
         }
 
         if (movingForward && error < 0.0f) {
           motors.stop();
-          transitionTo(IDLE);
+          setState(IDLE);
           break;
         }
         if (!movingForward && error > 0.0f) {
           motors.stop();
-          transitionTo(IDLE);
+          setState(IDLE);
           break;
         }
 
@@ -244,7 +242,7 @@ void Controllers::moveDistance(float target, bool forward) {
 
         if (fabs(error) < turnTolerance) {
           motors.stop();
-          transitionTo(IDLE);
+          setState(IDLE);
           break;
         }
 

@@ -12,19 +12,23 @@ class Exploration {
 
     enum ExplorationStates {
       IDLE,
-      LOCATING_WALL,
-      APPROACHING_WALL,
-      ALIGN_WITH_WALL,
-      FOLLOWING_WALL,
-      TEST,
-      GAP_DETECTED,
-      TURNING_RIGHT,
-      TURNING_LEFT,
-      FINISHED
+      GOTO_GOAL, 
+      AVOID_OBSTACLE,
+      TEST
     };
 
     Sensors &sensors;
     Controllers &Controller;
+
+    float poseX = 0.0f;
+    float poseY = 0.0f;
+    float poseTheta = 0.0f;
+
+    float goalX = 0.0f;
+    float goalY = 0.0f;
+    float goalTheta = 0.0f;
+
+    void setGoal(float x, float y, float theta);
 
     ExplorationStates explorationState;
     ExplorationStates prevState;
@@ -39,13 +43,14 @@ class Exploration {
 
     int alignAttempts;
     
-
-    void setState(ExplorationStates state);
+    void onEnterState();
+    void setState(ExplorationStates next);
 
   public:
     Exploration(Sensors &sensors, Controllers &Controller);
     
     void startExploring();
+    void stop();
     void update();
     
 };

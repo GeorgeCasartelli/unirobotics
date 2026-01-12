@@ -43,7 +43,7 @@ void Sensors::update() {
     // if (distanceArray[1] < 6000) {
     //     rightIRs.rear = distanceArray[1];
     // }
-    
+    Serial.println((String)"distanceFront: "+ distanceFront + "  " + distanceRight);
 
     // Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
     addReading(rightIRs.front);
