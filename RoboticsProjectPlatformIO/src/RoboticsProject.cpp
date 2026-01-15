@@ -56,13 +56,16 @@ void loop() {
   }
   if (JoystickDown == 0) {
     // Controllers::moveDistance(300.0, false);
-    
-    Controller.goToPose(300, -300, 180);
-    // Controller.turnToFace(90.0);
+    // Controller.requestTurnRightToCardinal();
+    // Controller.goToPose(0, 1680, 180);
+    Controller.requestTurn(90.0);
   }
   if (JoystickLeft == 0) {
-
-    Controller.goToPose(0, 0, 180);
+    // Controller.requestTurnLeftToCardinal();
+    // Controller.goToPose(0, 0, 180);
+    // Controller.getClosestCardinal(-46 * (PI/180));
+    Controller.align();
+    // Controller.requestTurn(-90);
   }
   // Serial.println("Blaaah"); 
   // Controller.update();

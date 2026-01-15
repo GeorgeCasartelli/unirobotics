@@ -34,6 +34,7 @@ void Motors::setup(mbed::InterruptIn &interrupt) {
 void Motors::setTargetSpeeds(float left, float right) {
     if (motorState == EMERGENCY || motorState == CHANGING_DIR)
         return;
+    
     targetSpeedLeft = left;
     targetSpeedRight = right;
 }
@@ -251,9 +252,9 @@ void Motors::update() {
     }
 
     // debug prints
-    if (motorState != STOPPED) {
+    // if (motorState != STOPPED) {
         if (printStatement) Serial.println((String)"Motor State: " + stateToString(motorState));
-    }
+    // }
 
 
     // Serial.println(
@@ -280,6 +281,7 @@ void Motors::update() {
         }
 
         case CHANGING_DIR: {
+            
             handleChangingDir();
             break;
         }

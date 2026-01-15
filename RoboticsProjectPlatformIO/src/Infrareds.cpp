@@ -25,7 +25,7 @@ void Infrareds::runtime() {
         // create 12 bit distance variable (bit shifted 8 bit + 4 bit)
         float distance = ((((data[0] << 4) | (data[1])) >> 1) * 0x35) / 16.0f;
 
-        distances[i] = distance;
+        distances[i] = distance * 0.01; // conv to cm
     }
 }
 

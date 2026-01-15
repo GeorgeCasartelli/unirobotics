@@ -23,6 +23,9 @@ public:
     float getRightDist();  // mm
     float getLeftDist();
     RightDistances getRightDist_IR();
+    
+    float getFrontLeftDist() { return distanceFrontLeft; }
+    float getFrontRightDist() { return distanceFrontRight; }
 
     float getRightAvg();
     // String getValues() {
@@ -36,6 +39,8 @@ private:
 
     float distanceFront;
     float distanceRight;
+    float distanceFrontLeft;
+    float distanceFrontRight;
     
     float* distanceArray;
 

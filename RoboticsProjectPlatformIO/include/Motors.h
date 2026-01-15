@@ -17,6 +17,12 @@ class Motors{
         float getDistanceA();
         float getDistanceB();
 
+        bool isChangingDir() { return motorState == CHANGING_DIR; }
+
+        bool isStopped() { return motorState == STOPPED; }
+        int8_t getCurrentLeftDir() { return currentLeftDir; };
+        int8_t getCurrentRightDir() { return currentRightDir; }
+
 
     private:
         // attributes
@@ -45,12 +51,17 @@ class Motors{
         float targetSpeedLeft = 0.0f;
         float targetSpeedRight = 0.0f;
 
+        const float minPWM = 0.23f;
+        const float maxPWM = 1.0f;
+
         int8_t currentLeftDir = 0;
         int8_t currentRightDir = 0;
         int8_t desiredLeftDir = 0;
         int8_t desiredRightDir = 0;
 
-        bool printStatement = false;
+        // bool isChangingDir = false;
+
+        bool printStatement = true;
 
         //clock
         uint32_t lastUpdateUs = 0;

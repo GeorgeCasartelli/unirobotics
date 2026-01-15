@@ -14,6 +14,17 @@ class Exploration {
       IDLE,
       GOTO_GOAL, 
       AVOID_OBSTACLE,
+      WALL_FOLLOW, // right side
+      PRE_GAP_ALIGN,
+      WAIT_ALIGN,
+      WAIT_ALIGN_MOVE,
+      PREP_RIGHT_TURN,
+      CORNER_TURN,
+      POST_TURN_ESCAPE,
+      POST_CORNER_ALIGN,
+      ALIGN_TO_WALL,
+      LEAVE_POINT_CHECK,
+      ARRIVED,
       TEST
     };
 
@@ -37,15 +48,42 @@ class Exploration {
     float gapDetectedDistance;
     float confirmationDistance;
 
-    float rightWallThreshold;
     float gapThreshold;
-    float frontBlockedThreshold;
 
     int alignAttempts;
     
     void onEnterState();
     void setState(ExplorationStates next);
 
+
+    // bug stuff
+
+    float mLineSLope;
+    float mLineIntercept; // y intercept
+    float hitPointX, hitPointY; // coords of obstacle hit
+    bool followingWall;
+    float distanceToGoalAtHit;
+
+    //wall following
+
+    float frontBlockedThreshold = 10.0f;
+    float frontRightBlockedThreshold = 10.0f; 
+    float wallFollowingDist = 10.0f;
+    float Kp_wall = 0.05f;
+
+    int gapCount = 0;
+    bool canTriggerGap = true;
+
+    int leftTurnStreak;
+    float chooseEscapeTurn(float front, float fl, float fr);
+    void frontBlocked(float front, float fl, float fr, float rightUS);
+
+
+    float wrapPi(float angle) {
+            while (angle > PI) angle -= 2.0f * PI;
+            while (angle < -PI) angle += 2.0f * PI;
+            return angle;
+        }
   public:
     Exploration(Sensors &sensors, Controllers &Controller);
     

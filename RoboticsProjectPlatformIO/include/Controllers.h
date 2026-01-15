@@ -13,6 +13,7 @@ class Controllers{
         float distanceTarget;
         float turnTargetDeg;
         float turnTarget;
+        float pendingTurnTarget;
         float startDistanceA;
         float startDistanceB;
         float movingForward;
@@ -26,10 +27,13 @@ class Controllers{
         const float trackWidth = 112.0f;
 
         const float Kp = 0.01;
-        const float Kp_turn = 0.8;
+        const float Kp_turn = 0.8f;
+        const float Kp_dist = 0.01f;
+        const float Kp_angle =  0.07f;
+
         const float tolerance = 0.0005;
-        const float turnTolerance = 0.05;
-        const float minPWM = 0.2f;
+        const float turnTolerance = 0.005;
+        const float minPWM = 0.25f;
 
         float prevTurnError = 0.0f;
 
@@ -54,9 +58,21 @@ class Controllers{
         enum STATES {
             IDLE,
             MOVING,
+            TURN_PREP,
             TURNING,
-            GOTO
+            GOTO,
+            WALL_FOLLOWING,
+            ALIGN_TO_WALL
         };
+
+        float targetWallDistance;
+        float currentWallDistance;
+        float Kp_wall = 0.01f;
+        float baseWallSpeed = 0.5f;
+
+        float wallDistanceHistory[3];
+        int wallHistoryIndex;
+        float filteredWallDistance;
 
         enum GoToSTATES {
             NONE,
@@ -77,9 +93,8 @@ class Controllers{
         float goToDistance = 0.0f;
 
         void setState(STATES next);
+        void onEnterState();
 
-        
-        void cancel();
         float calculateTrapezoidalSpeed(float traveled, float totalDistance, float maxSpeed);
         
         Motors &motors;
@@ -89,39 +104,69 @@ class Controllers{
 
         float rightDistanceAvg; 
 
-        const char* Controllers::stateToString(STATES s) {
+        const char* stateToString(STATES s) {
             switch (s) {
                 case IDLE: return "IDLE";
                 case MOVING: return "MOVING";
                 case TURNING: return "TURNING";
+                case TURN_PREP: return "TURN_PREP";
                 case GOTO: return "GOTO";
+                case WALL_FOLLOWING: return "WALL_FOLLOWING";
+                case ALIGN_TO_WALL: return "ALIGN_TO_WALL";
                 default: return "UNKNOWN";
             };
         }
         
         float wrapPi(float angle) {
             while (angle > PI) angle -= 2.0f * PI;
-            while (angle < PI) angle += 2.0f * PI;
+            while (angle < -PI) angle += 2.0f * PI;
             return angle;
         }
 
+        float rightFrontIR = 0;
+        float rightRearIR = 0;
+        float rightUS = 0;
+        bool distLocked = false;
+
+        const float LOCK_IN = 0.8f;
+        const float LOCK_OUT = 1.8f;
+
+        int alignCount = 0;
+
     public:
+
+        void align();
+
         Controllers(Motors &motor, Gyro &gyro); 
         void moveDistance(float target, bool forward);
-        void turnDegrees(float angle);
+        void requestTurn(float angle);
         void update();
         void setObstacleDetected(bool flag);
-        void moveContinuous(bool forward, float speed = 0.7f);
         bool isIdle();
         float getAvgDistance();
-        void wallFollow(float error, float baseSpeed, float Kp);
-        void updateRightWall(float val);
         void goToPose(float xg, float yg, float thetag);
-    
+        float getClosestCardinal(float theta);
+        void requestTurnToHeading(float target);
+        void requestTurnLeftToCardinal();
+        void requestTurnRightToCardinal();
+        void requestWallAlign();
+        void recalibrate();
+
+        //wall follow
+        void followWall();
+        void moveContinuous(bool forward, float speed = 0.7f);
+        void startWallFollowing(float targetDist, float speed);
+        void setWallDistance(float distance);
+
+        void setRightIR(float front, float rear) { rightFrontIR = front; rightRearIR = rear;}
+        void setRightUS(float us) { rightUS = us; }
+
+
         float getTheta() { return theta; }
         float getX() { return x; }
         float getY() { return y; }
         
+        void cancel();
 };
 
 
