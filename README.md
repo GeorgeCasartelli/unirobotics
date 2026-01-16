@@ -1,6 +1,6 @@
 ## University Rotics Project
 
-This is a project for my final year at the University of York.
+This is a project for my final year at the University of York. This is a project run on an Arduino Nano 33 BLE.
 
 The goal is to design and build a skid steered differential drive mobile robot, designing all aspects from the chassis, to the sensor placement, to the code and algorithms implemented. 
 This robot should then be able to navigate and plot out a maze, and then be able to calculate the shortest path back to the "start".
