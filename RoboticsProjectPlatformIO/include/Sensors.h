@@ -3,7 +3,7 @@
 
 #include <Ultrasonics.h>
 #include <Infrareds.h>
-
+#include <Gyro.h>
 
 
 struct RightDistances {
@@ -13,8 +13,9 @@ struct RightDistances {
 
 class Sensors {
 public:
-    Sensors(Ultrasonics &us, Infrareds &ir);
+    Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro);
 
+    void setup();
     void update();   // call every loop
 
     // Raw values (smoothed)
@@ -22,6 +23,9 @@ public:
     float getRightDist();  // mm
     float getLeftDist();
     RightDistances getRightDist_IR();
+    
+    float getFrontLeftDist() { return distanceFrontLeft; }
+    float getFrontRightDist() { return distanceFrontRight; }
 
     float getRightAvg();
     // String getValues() {
@@ -31,9 +35,12 @@ public:
 private:
     Ultrasonics &US;
     Infrareds &IR;
+    Gyro &GYRO;
 
     float distanceFront;
     float distanceRight;
+    float distanceFrontLeft;
+    float distanceFrontRight;
     
     float* distanceArray;
 

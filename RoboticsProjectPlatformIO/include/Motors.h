@@ -11,11 +11,17 @@ class Motors{
         void setup(mbed::InterruptIn &interrupt);
         void update();
         void setTargetSpeeds(float left, float right);
-        void setDirection(int left, int right);
+        void setDirection(int8_t left, int8_t right);
         void stop();
         void emergencyStop();
         float getDistanceA();
         float getDistanceB();
+
+        bool isChangingDir() { return motorState == CHANGING_DIR; }
+
+        bool isStopped() { return motorState == STOPPED; }
+        int8_t getCurrentLeftDir() { return currentLeftDir; };
+        int8_t getCurrentRightDir() { return currentRightDir; }
 
 
     private:
@@ -29,44 +35,44 @@ class Motors{
         mbed::InterruptIn EncA;
         mbed::InterruptIn EncB;
 
-        long int ShaftRevA;
-        long int ShaftRevB;
+        uint32_t ShaftRevA = 0;
+        uint32_t ShaftRevB = 0;
 
-        volatile long int EncCountA;
-        volatile long int EncCountB;
+        volatile uint32_t EncCountA = 0;
+        volatile uint32_t EncCountB = 0;
 
         const float wheelCircumferance = 3.14159f * 48;
 
         // float currentSpeed;
         // float targetSpeed;
 
-        float currentSpeedLeft;
-        float currentSpeedRight;
-        float targetSpeedLeft;
-        float targetSpeedRight;
+        float currentSpeedLeft = 0.0f;
+        float currentSpeedRight = 0.0f;
+        float targetSpeedLeft = 0.0f;
+        float targetSpeedRight = 0.0f;
 
-        float stepLeft;
-        float stepRight;
-        float stepMin;
+        const float minPWM = 0.23f;
+        const float maxPWM = 1.0f;
 
-        bool pendingSpeedChange;
-        float pendingSpeed;
+        int8_t currentLeftDir = 0;
+        int8_t currentRightDir = 0;
+        int8_t desiredLeftDir = 0;
+        int8_t desiredRightDir = 0;
 
-        int currentLeftDir;
-        int currentRightDir;
-        int desiredLeftDir;
-        int desiredRightDir;
-        bool isChangingDir = false;
+        // bool isChangingDir = false;
 
-        bool printStatement = true;
+        bool printStatement = false;
 
-        //control
-        float Kp = 0.01f; // proportional gain
+        //clock
+        uint32_t lastUpdateUs = 0;
+
+        // acceleration limits 
+        float dt;
+        float maxAccel = 1.2f; // 
+        float maxDecel = 1.5f; // stronger breaking
 
         enum STATES {
             STOPPED,
-            // RAMP_UP,
-            // RAMP_DOWN,
             RUNNING,
             CHANGING_DIR,
             EMERGENCY
@@ -91,6 +97,7 @@ class Motors{
         void handleRunning();
         void handleStopped();
         void handleEmergency();
+        void constrainCurrentSpeeds();
 };
 
 

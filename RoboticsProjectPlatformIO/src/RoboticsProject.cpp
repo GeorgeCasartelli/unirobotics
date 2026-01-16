@@ -21,16 +21,17 @@ static bool explorationActive = false;
 Motors motors;
 Infrareds IR;
 Ultrasonics US;
-Sensors sensors(US, IR);
+Gyro gyro;
+Sensors sensors(US, IR, gyro);
 
-Controllers Controller(motors);
+Controllers Controller(motors, gyro);
 
 Exploration Explorer(sensors, Controller);
 
 
 void setup() {
   // get clock speed error for timer
-  US.setup();
+  sensors.setup();
   motors.setup(JoystickRight);
   
 }
@@ -48,18 +49,27 @@ void loop() {
     // Controller.moveDistance(300.0, true);
     // static int count = 0;
     // Serial.println((String)"StartExploring called " + (++count) + " times");
+    // Explorer.startExploring();
+
     Explorer.startExploring();
     // explorationActive = true;
   }
   if (JoystickDown == 0) {
     // Controllers::moveDistance(300.0, false);
-    Controller.turnDegrees(90.0);
+    // Controller.requestTurnRightToCardinal();
+    // Controller.goToPose(0, 1680, 180);
+    Controller.requestTurn(90.0);
   }
   if (JoystickLeft == 0) {
-    Controller.turnDegrees(-90.0);
+    // Controller.requestTurnLeftToCardinal();
+    // Controller.goToPose(0, 0, 180);
+    // Controller.getClosestCardinal(-46 * (PI/180));
+    Controller.align();
+    // Controller.requestTurn(-90);
   }
   // Serial.println("Blaaah"); 
-  Controller.update();
+  // Controller.update();
+  // sensors.update();
   // if (print_data) {
   //   wait_us(500000);
   // }

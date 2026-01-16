@@ -2,10 +2,13 @@
 
 #include <Ultrasonics.h>
 #include <Infrareds.h>
+#include <Gyro.h>
 
-Sensors::Sensors(Ultrasonics &us, Infrareds &ir) 
+
+Sensors::Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro) 
     : US(us),
-      IR(ir)
+      IR(ir),
+      GYRO(gyro)
 {
     // distanceRight = 0;
     // distanceFront = 0;
@@ -13,15 +16,24 @@ Sensors::Sensors(Ultrasonics &us, Infrareds &ir)
     bufferIndex = 0;
     bufferFull = false;
 }
+void Sensors::setup() {
+    US.setup();
+    GYRO.begin();
+}
 
 void Sensors::update() {
+    GYRO.update();
     US.runtime(0);
     US.runtime(1);
+    US.runtime(2);
+    US.runtime(3);
 
     IR.runtime();
 
     distanceFront = US.distances[1];
     distanceRight = US.distances[0];
+    distanceFrontLeft = US.distances[2];
+    distanceFrontRight = US.distances[3];
     // distanceFront = 0.0f;
     // distanceRight = 0.0f;
     distanceArray = IR.getDistances();
@@ -35,9 +47,10 @@ void Sensors::update() {
     // if (distanceArray[1] < 6000) {
     //     rightIRs.rear = distanceArray[1];
     // }
-    
+    // Serial.println((String)"distanceFront: "+ distanceFront + "  " + distanceRight);
 
-    Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
+    // Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
+    // Serial.println((String)"Front Left: "+ distanceFrontLeft + ", frontRight: " + distanceFrontRight);
     addReading(rightIRs.front);
 }
 
@@ -68,7 +81,7 @@ float Sensors::getRightAvg() {
         for (int i = 0; i < BUFFER_SIZE; i++) { 
             sum+= distanceBufferIR[i]; 
         } 
-        Serial.println((String)distanceBufferIR[1]); 
+        // Serial.println((String)distanceBufferIR[1]); 
         return sum / BUFFER_SIZE; 
     } else { 
         return rightIRs.front; // else return reading 
