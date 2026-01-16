@@ -65,7 +65,6 @@ void Controllers::moveDistance(float target, bool forward) {
 
   void Controllers::requestTurn(float angle) {
     pendingTurnTarget = angle;
-
     motors.setDirection(angle > 0 ? 0 : 1, angle > 0 ? 1 : 0);
     setState(TURN_PREP);
   }
@@ -274,6 +273,32 @@ void Controllers::moveDistance(float target, bool forward) {
     setState(ALIGN_TO_WALL);
   }
 
+
+  void Controllers::driveHeading(float targetHeadingRad, float baseSpeed){
+    if (motors.getCurrentLeftDir() != 1 || motors.getCurrentRightDir() != 1) {
+      motors.setDirection(1, 1);
+      leftSign = 1;
+      rightSign = 1;
+      movingForward = true;
+    }
+    
+    float error = wrapPi(targetHeadingRad - getTheta());
+    float steer = K_heading * error;
+
+    steer = constrain(steer, -maxSteer, maxSteer);
+
+    float left = baseSpeed - steer;
+    float right = baseSpeed + steer;
+
+    left = constrain(left, minPWM, 0.9f);
+    right = constrain(right, minPWM, 0.9f);
+
+    motors.setTargetSpeeds(left, right);
+
+    setState(HEADING_DRIVE);
+
+  }
+
   void Controllers::update(){
 
     updatePose();
@@ -283,9 +308,9 @@ void Controllers::moveDistance(float target, bool forward) {
     float dtheta = (dr - dl) / trackWidth; // angle change
 
     
-    // if (stateToString(controllerState) != "IDLE") {
+    if (stateToString(controllerState) != "IDLE") {
       if (printStates) Serial.println((String)"Controller State: " + stateToString(controllerState));
-    // }
+    }
     
     if (gotoStep != NONE && controllerState == IDLE) {
       runGoToStep();
@@ -342,6 +367,8 @@ void Controllers::moveDistance(float target, bool forward) {
         turnTargetDeg = pendingTurnTarget;
         turnTarget = turnTargetDeg * (PI/180.0f);
 
+        prevTurnError = turnTarget;
+        turnErrorInit = true;
         setState(TURNING);
         motors.setTargetSpeeds(0.4f, 0.4f);
         // turnDegrees(pendingTurnTarget); // once in the if statement, state sets to TURNING
@@ -350,18 +377,44 @@ void Controllers::moveDistance(float target, bool forward) {
     
       case TURNING: {
         float error = turnTarget - dtheta;
+        float fabsError = fabs(error);
 
-        if (fabs(error) < turnTolerance) {
+        if (fabsError < turnTolerance) {
           Serial.println("WITHIN TOLERANCE. STOPPING");
           motors.stop();
           setState(IDLE);
           break;
         }
 
-        float speed = fabs(Kp_turn * error);
+          // overshoot stop: if we crossed through zero, stop
 
-        if (speed > 0.0f && speed < minPWM) speed = minPWM; // bottom limit
-        speed = constrain(speed, minPWM, maxTurnSpeed);
+        if (turnErrorInit) {
+          bool signFlip = (prevTurnError > 0.0f && error < 0.0f) ||
+                          (prevTurnError < 0.0f && error > 0.0f);
+          prevTurnError = error;
+
+          if (signFlip) {
+            motors.stop();
+            setState(IDLE);
+            turnErrorInit = false;
+            break;
+          }
+        }
+        
+        const float BIG_ERR = 20.0f * PI/180.0f; // 20 degrees
+        const float FAST_SPEED = 0.45f;          // tune
+        const float SLOW_MAX = 0.30f;            // cap slow phase so it doesn't crawl forever
+
+        float speed;
+
+        if (fabsError > BIG_ERR) {
+          speed = FAST_SPEED;
+        } else  {
+          speed = Kp_turn * fabsError;
+          speed = constrain(speed, minPWM, SLOW_MAX);
+        }
+
+        speed =constrain(speed, minPWM, maxTurnSpeed);
 
         Serial.println((String)"Error: " + error);
         motors.setTargetSpeeds(speed, speed);
@@ -418,6 +471,11 @@ void Controllers::moveDistance(float target, bool forward) {
         Serial.println((String)"Aligning... offset = " + offset + ", count = " + alignCount);
         break;
 
+      }
+
+      case HEADING_DRIVE: {
+
+        break;
       }
       
       case IDLE: {

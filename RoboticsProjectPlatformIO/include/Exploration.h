@@ -1,5 +1,5 @@
 #ifndef EXPLORATION_H
-#define EXPLORATION_J
+#define EXPLORATION_H
 
 #include <Arduino.h>
 #include <Ultrasonics.h>
@@ -11,79 +11,72 @@ class Exploration {
   private:
 
     enum ExplorationStates {
-      IDLE,
-      GOTO_GOAL, 
-      AVOID_OBSTACLE,
-      WALL_FOLLOW, // right side
-      PRE_GAP_ALIGN,
-      WAIT_ALIGN,
-      WAIT_ALIGN_MOVE,
-      PREP_RIGHT_TURN,
-      CORNER_TURN,
-      POST_TURN_ESCAPE,
-      POST_CORNER_ALIGN,
-      ALIGN_TO_WALL,
-      LEAVE_POINT_CHECK,
-      ARRIVED,
-      TEST
+      IDLE,           // 0
+      TURN_TO_GOAL,   // 1
+      TURNING,        // 2
+      DRIVE,          // 3
+      AVOID,          // 4
+      WALL_FOLLOW,    // 5
+      ESCAPE_STOP,
+      ESCAPE_REVERSE,
+      ESCAPE_TURN
     };
+
+    String stateToString(ExplorationStates state) {
+      switch(state) {
+        case IDLE: return "IDLE";
+        case TURN_TO_GOAL: return "TURN_TO_GOAL";
+        case TURNING: return "TURNING";
+        case DRIVE: return "DRIVE";
+        case AVOID: return "AVOID";
+        case WALL_FOLLOW: return "WALL_FOLLOW";
+        case ESCAPE_STOP: return "ESCAPE_STOP";
+        case ESCAPE_REVERSE: return "ESCAPE_REVERSE";
+        case ESCAPE_TURN: return "ESCAPE_TURN";
+        default: return "UNKNOWN";
+      };
+    }
+
+    int pendingTurn = 0;
+    int pickTurnDeg(float clearFL, float clearF, float clearFR);
+
+    int frontBlockedCount = 0;
+    int clearFCount = 0;
+    int clearFLCount = 0;
+    int clearFRCount = 0;
+
+    float NORTH = PI/2;
+
+    const float COLLISION = 16.0f;
+    const float COLLISION_FL = 14.0f;
+    const float COLLISION_FR = 14.0f;
+
+    const float WALL_DIST = 9.0f;
+
+    // odom
+    float lasX = 0.0f;
+    float lastY = 0.0f;
+    float lastTheta = 0.0f;
+    int stuckCount =0;
+
+    float chooseHeadingFromFrontArray(float FL, float F, float FR);
 
     Sensors &sensors;
     Controllers &Controller;
 
-    float poseX = 0.0f;
-    float poseY = 0.0f;
-    float poseTheta = 0.0f;
-
-    float goalX = 0.0f;
-    float goalY = 0.0f;
-    float goalTheta = 0.0f;
-
-    void setGoal(float x, float y, float theta);
-
-    ExplorationStates explorationState;
-    ExplorationStates prevState;
-
-    bool controllerBusy;
-    float gapDetectedDistance;
-    float confirmationDistance;
-
-    float gapThreshold;
-
-    int alignAttempts;
-    
-    void onEnterState();
+    ExplorationStates explorationState = IDLE;
+    ExplorationStates prevState = IDLE;
+    ExplorationStates nextState = IDLE;
     void setState(ExplorationStates next);
-
-
-    // bug stuff
-
-    float mLineSLope;
-    float mLineIntercept; // y intercept
-    float hitPointX, hitPointY; // coords of obstacle hit
-    bool followingWall;
-    float distanceToGoalAtHit;
-
-    //wall following
-
-    float frontBlockedThreshold = 10.0f;
-    float frontRightBlockedThreshold = 10.0f; 
-    float wallFollowingDist = 10.0f;
-    float Kp_wall = 0.05f;
-
-    int gapCount = 0;
-    bool canTriggerGap = true;
-
-    int leftTurnStreak;
-    float chooseEscapeTurn(float front, float fl, float fr);
-    void frontBlocked(float front, float fl, float fr, float rightUS);
-
 
     float wrapPi(float angle) {
             while (angle > PI) angle -= 2.0f * PI;
             while (angle < -PI) angle += 2.0f * PI;
             return angle;
         }
+
+    bool targetInit = false;
+    float targetFiltered = 0.0f;
   public:
     Exploration(Sensors &sensors, Controllers &Controller);
     

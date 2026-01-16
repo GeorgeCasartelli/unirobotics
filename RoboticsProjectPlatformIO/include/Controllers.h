@@ -32,10 +32,11 @@ class Controllers{
         const float Kp_angle =  0.07f;
 
         const float tolerance = 0.0005;
-        const float turnTolerance = 0.005;
+        const float turnTolerance = 0.01;
         const float minPWM = 0.25f;
 
         float prevTurnError = 0.0f;
+        bool turnErrorInit = false;
 
         int leftSign = 1;
         int rightSign = 1;
@@ -62,13 +63,19 @@ class Controllers{
             TURNING,
             GOTO,
             WALL_FOLLOWING,
-            ALIGN_TO_WALL
+            ALIGN_TO_WALL,
+            HEADING_DRIVE
         };
 
         float targetWallDistance;
         float currentWallDistance;
         float Kp_wall = 0.01f;
         float baseWallSpeed = 0.5f;
+
+
+        float K_heading = 0.2f;
+        float maxSteer = 0.2f;
+
 
         float wallDistanceHistory[3];
         int wallHistoryIndex;
@@ -113,6 +120,7 @@ class Controllers{
                 case GOTO: return "GOTO";
                 case WALL_FOLLOWING: return "WALL_FOLLOWING";
                 case ALIGN_TO_WALL: return "ALIGN_TO_WALL";
+                case HEADING_DRIVE: return "HEADING_DRIVE";
                 default: return "UNKNOWN";
             };
         }
@@ -133,9 +141,12 @@ class Controllers{
 
         int alignCount = 0;
 
+
+        
     public:
 
         void align();
+        void driveHeading(float targetHeadingRad, float baseSpeed);
 
         Controllers(Motors &motor, Gyro &gyro); 
         void moveDistance(float target, bool forward);

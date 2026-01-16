@@ -50,7 +50,7 @@ void Sensors::update() {
     // Serial.println((String)"distanceFront: "+ distanceFront + "  " + distanceRight);
 
     // Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
-    Serial.println((String)"Front Left: "+ distanceFrontLeft + ", frontRight: " + distanceFrontRight);
+    // Serial.println((String)"Front Left: "+ distanceFrontLeft + ", frontRight: " + distanceFrontRight);
     addReading(rightIRs.front);
 }
 

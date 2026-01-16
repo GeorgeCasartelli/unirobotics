@@ -61,7 +61,7 @@ class Motors{
 
         // bool isChangingDir = false;
 
-        bool printStatement = true;
+        bool printStatement = false;
 
         //clock
         uint32_t lastUpdateUs = 0;

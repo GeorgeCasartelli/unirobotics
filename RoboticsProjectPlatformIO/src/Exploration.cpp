@@ -8,312 +8,219 @@ Exploration::Exploration(Sensors &sensors, Controllers &controller)
       Controller(controller)
 {
     explorationState = IDLE;
-    prevState = IDLE;
-    controllerBusy = false;
-
-    gapDetectedDistance = 0.0f;
-    confirmationDistance = 100.0f;
-
-    // rightWallThreshold = 15.0f;
-    gapThreshold = 30.0f;
-    // frontBlockedThreshold = 9.0f;
-    alignAttempts = 0;
-
-    leftTurnStreak = 0;
-
 }
 
 void Exploration::startExploring() {
-    // setGoal(0,1680.0f, 0.0f);
-    // setState(GOTO_GOAL);
-    setState(WALL_FOLLOW);
-    // Controller.moveContinuous(true); 
-}
-
-void Exploration::stop() {
-    setState(IDLE);
-}
-
-void Exploration::setGoal(float x, float y, float theta) {
-    goalX = x;
-    goalY = y;
-    goalTheta = theta;
-}
-
-void Exploration::onEnterState() {
-    switch(explorationState) {
-        case IDLE:
-            break;
-
-        case GOTO_GOAL:
-            Serial.println((String)"Entering gotogoal, triggering controller: x: "+goalX+", y: " + goalY);
-            Controller.goToPose(goalX, goalY, goalTheta);
-            break;
-
-        case WALL_FOLLOW:
-            Serial.println("Starting wall follow");
-            Controller.startWallFollowing(wallFollowingDist, 0.6f);
-            break;
-
-        case CORNER_TURN:
-            //nothing to do
-            break;
-
-    }
-}
-
-void Exploration::setState(ExplorationStates next) {
-    if (explorationState != next) {
-        prevState = explorationState;
-        explorationState = next;
-        onEnterState();
-    }
-}
-
-float Exploration::chooseEscapeTurn(float front, float fl, float fr) {
-    const float OPEN_BIAS = 8.0f;
-    float sideBias = fr - fl; // if +, right more open
-
-    float theta = Controller.getTheta();
-
-    if (sideBias > OPEN_BIAS) return Controller.getClosestCardinal(theta - PI/2);
-    if (sideBias < -OPEN_BIAS) return Controller.getClosestCardinal(theta +  PI/2);
-
-    // if 3 left turns in a row, return right turn
-    if (leftTurnStreak >= 3) return Controller.getClosestCardinal(theta - PI/2);
-    return Controller.getClosestCardinal(theta + PI/2);
+    setState(TURN_TO_GOAL);
 }
 
 
-void Exploration::frontBlocked(float front, float fl, float fr, float rightUS) {
-    Controller.cancel();
-    if (!Controller.isIdle()) { return; }
- 
-    float turn = chooseEscapeTurn(front, fl, fr);
-    float theta = Controller.getTheta();
-
-    if (rightUS > 15.0f) {
-        turn = Controller.getClosestCardinal(theta - PI/2);
-    }
-
-    float delta = wrapPi(turn-theta);
-    bool turningLeft = delta > 0;
-
-    if (turningLeft) { leftTurnStreak++; }
-    else { leftTurnStreak = 0; }
-
-    Serial.println((String)"frontBlocked: theta=" + theta*(180/PI) +
-                   " target=" + turn*(180/PI) +
-                   " delta=" + delta*(180/PI));
-
-    Controller.requestTurnToHeading(turn);
-    
-    setState(CORNER_TURN);
+void Exploration::setState(ExplorationStates next){
+    if (explorationState == next) return;
+    prevState = explorationState;
+    explorationState = next;
 }
 
-
-void Exploration::update() {
-
+void Exploration::update(){
     sensors.update();
-    // Serial.println((String)"front: " + sensors.getRightDist());
 
-    float frontDist = sensors.getFrontDist();
-    float rightDist = sensors.getRightDist();
-    float avgRightDist = sensors.getRightAvg();
-    float frontLeftDist = sensors.getFrontLeftDist();
-    float frontRightDist = sensors.getFrontRightDist();
+    float F = sensors.getFrontDist();
+    float FL = sensors.getFrontLeftDist();
+    float FR = sensors.getFrontRightDist();
+    float R = sensors.getRightDist();
 
+    bool hitL = FL < COLLISION;
+    bool hitC = F < COLLISION;
+    bool hitR = FR < COLLISION;
 
-    // Controller.setWallDistance(rightDist_IR);
+    bool wallFace = hitL && hitC && hitR;
+
+    // bool frontBlocked = frontBlockedCount >= 3;
+
     
-    RightDistances r = sensors.getRightDist_IR();
-    Controller.setRightIR(r.front, r.rear);
-    Controller.setRightUS(rightDist);
-    
-    // Serial.println((String)"Front Sensor Array: FL " + frontLeftDist + ", FR: " + frontRightDist + ", F: " + frontDist);
-    Serial.println((String)"leftTurnStreak: " + leftTurnStreak);
+    // bool clearF = clearFCount >= 3;
+    // bool clearFL = clearFLCount >= 3;
+    // bool clearFR = clearFRCount >= 3;
+    // bool rightWall = R < RIGHT_WALL;
 
+
+    float x = Controller.getX();
+    float y = Controller.getY();
+    float theta = Controller.getTheta();
+
+    float dx = x - lasX;
+    float dy = y - lastY;
+    float dtheta = theta - lastTheta;
+    float moved = sqrtf(dx*dx + dy*dy);
+
+    lasX = x;
+    lastY = y;
+    lastTheta = theta;
+
+    const float STUCK_THRESH = 0.5f;
+    const float STUCK_TURN_THRESH = 0.8f;
+    const int STUCK_LIMIT = 100;
+
+    
+    Serial.println((String) "SEXPLORATION STATE: " + stateToString(explorationState));
     switch(explorationState) {
-        case IDLE:
-        break;
+        case IDLE: {
 
-        case GOTO_GOAL: {
-
+            break;
+        }
+        case TURN_TO_GOAL: {
             if (Controller.isIdle()) {
-                Serial.println("Controller stopped, setting to idle");
-                setState(IDLE);
-            }
-
-            if (frontDist < frontBlockedThreshold) {
-                Serial.println("RAAHHH OBSTACLE");
-                Controller.cancel();
-                setState(WALL_FOLLOW);
+                Serial.println("Turning to goal...");
+                Controller.requestTurnToHeading(PI/2);
+                setState(TURNING);
             }
             break;
         }
 
+        case TURNING: {
+            
+            if (!Controller.isIdle()) break;
+
+            Serial.println("Turning finished...");
+            setState(DRIVE);
+
+            break;
+        }
+        case DRIVE: {
+
+            if (moved < STUCK_THRESH) {
+                stuckCount++;
+            } else stuckCount = 0;
+
+            if (stuckCount > STUCK_LIMIT) {
+                Controller.cancel();
+                setState(ESCAPE_STOP);
+                stuckCount = 0;
+            }
+
+            bool danger = hitC || hitL || hitR;
+            if (danger) {
+                Serial.println("Collision!!!");
+                Controller.cancel();
+                pendingTurn = pickTurnDeg(FL, F, FR);
+                setState(AVOID);
+                break;
+            } 
+
+            float target = chooseHeadingFromFrontArray(FL, F, FR);
+            
+            const float val = 0.88f;
+            targetFiltered = wrapPi(val * targetFiltered + (1.0f - val) * target);
+
+            Controller.driveHeading(targetFiltered, 0.60f);
+            break;
+        }
+
+        case AVOID: {
+            if (!Controller.isIdle()) break;
+            if (pendingTurn == 90 && hitL && hitC && hitR) {
+                // all 3 sensors blocked so facing a wall fully, start wall following.
+                // Controller.startWallFollowing(WALL_DIST, 0.6f);
+                // setState(WALL_FOLLOW);
+                setState(ESCAPE_STOP);
+                Serial.println("Set state to WALL FOLLOW");
+            } else { 
+                Controller.requestTurn(pendingTurn);
+                setState(TURNING);
+            }
+            break;
+        }
 
         case WALL_FOLLOW: {
-            Serial.println((String)"WF: Front= " + frontDist + 
-                              " RirhgtFront = "  + r.front + 
-                              " FrontRight = "   + frontRightDist +
-                              ", rightRead = "   + r.rear + 
-                              ", rightUS = "     + rightDist);
-            
-            bool rightGap = (rightDist > gapThreshold) && canTriggerGap;
-            gapCount = rightGap ? gapCount + 1 : 0;
-            
-            if (!canTriggerGap && rightDist < 10.0f) { 
-                canTriggerGap = true;
-            }
 
-            if (frontDist < frontBlockedThreshold) {
-  
-                if (frontLeftDist > frontDist + 5.0f) {
-                    Serial.println("Detected left corner");
-                }
-                frontBlocked(frontDist, frontLeftDist, frontRightDist, rightDist);
-                break;
-            }
-            
-
-            if (frontRightDist < frontRightBlockedThreshold) {
-                Serial.println("FRONT RIGHT BLOCKED");
-            }
-
-            if (gapCount >= 5) {
-
-                if (frontLeftDist < 35.0f && frontRightDist > 50.0f) {
-                    Serial.println("Gap detected, FL/FR pattern suggests we are facing opening. Ignoring");
-                    gapCount = 0;
-                    break;
-
-                }
-                
-
-                if (frontRightDist < 18.0f) {
-                    Serial.println("Gap deteced but front right sees wall. Ignoring");
-                    gapCount = 0;
-                    break;
-                } 
-
-                Serial.println("REAL GAP ON RIGHT. TURNING");
-                // Controller.moveDistance(160.0f, true);
+            if (hitL || hitC || hitR) {
                 Controller.cancel();
-                gapCount = 0;
-                setState(PRE_GAP_ALIGN);
-                canTriggerGap = false;
-            }
-
-
-            break;
-        }
-
-        case PRE_GAP_ALIGN: {
-            if (Controller.isIdle()) {
-                if (frontRightDist > 20.0f && avgRightDist < 15.0f) {
-                    Controller.align();
-                    setState(WAIT_ALIGN_MOVE);
-                }
-                if (frontRightDist > 25.0f) {
-
-                    Controller.align();
-                    setState(PREP_RIGHT_TURN);
-                } else {
-                    Controller.align();
-                    setState(WAIT_ALIGN_MOVE);
-                }
+                pendingTurn = pickTurnDeg(FL, F, FR);
+                wallFace = hitL && hitC && hitR;
+                setState(AVOID);
             }
             break;
         }
 
-        case WAIT_ALIGN: {
-            if (Controller.isIdle()) {
-                setState(PREP_RIGHT_TURN);
-            }
-            break;
-        }
-
-        case WAIT_ALIGN_MOVE: {
-            if (Controller.isIdle()) {
-                Controller.moveDistance(160.0f, true);
-                setState(PREP_RIGHT_TURN);
-            }
-            break;
-        }
-
-        case PREP_RIGHT_TURN: {
-            if (frontDist < frontBlockedThreshold) {
-                if (frontLeftDist > frontDist + 5.0f) {
-                    Serial.println("Detected left corner");
-                }
-                frontBlocked(frontDist, frontLeftDist, frontRightDist, rightDist);;
-                break;
-            }
-            if (Controller.isIdle()) {
-                Controller.requestTurn(-90);
-                setState(CORNER_TURN);
-            }
-            break;
-        }
-
-        case CORNER_TURN: {
-            Serial.println("CORNER");
-            if (Controller.isIdle()) {
-                Serial.println("Turn done");
-                if (prevState == PREP_RIGHT_TURN) {
-                    Controller.moveDistance(80.0f, true);  
-                    setState(POST_TURN_ESCAPE);               
-                    
-                } else if (prevState == POST_TURN_ESCAPE) {
-                    Controller.moveDistance(60.0f, true);
-                    setState(POST_CORNER_ALIGN);
-                } else {
-                    Controller.align();
-                    setState(POST_CORNER_ALIGN);
-                }
-            }
-            break;
-        }
-
-        case POST_CORNER_ALIGN: {
-            if (Controller.isIdle()) {
-                Controller.startWallFollowing(wallFollowingDist, 0.6f);
-                setState(WALL_FOLLOW);
-            }
+        case ESCAPE_STOP: {
+            if (!Controller.isIdle()) break;
+            Controller.moveDistance(80.0, false);
+            setState(ESCAPE_REVERSE);
             break;
         }
 
 
-        case POST_TURN_ESCAPE: {
-            Serial.println("POST_TURN_ESCAPE");
+        case ESCAPE_REVERSE: {
+            if (!Controller.isIdle()) break;
 
-            // if (frontDist < frontBlockedThreshold) {
-                if (rightDist > gapThreshold) {
-                    if (Controller.isIdle()) {
-                        Controller.requestTurn(-90);
-                        setState(CORNER_TURN);
-                        break;
-                    }
-                }
-                if (frontLeftDist > frontDist + 5.0f) {
-                    Serial.println("Detected left corner");
-                }
-                // frontBlocked();
-            //     break;
-            // }
-            Controller.recalibrate();
-            if (Controller.isIdle()){
-                // leftTurnStreak = 
-                leftTurnStreak = 0;
-                setState(WALL_FOLLOW);
-            }
+            static int lastEscapeTurn = 90;
+            if (FR > FL + 5.0f) lastEscapeTurn = 90;
+            else if (FL > FR + 5.0f) lastEscapeTurn = -90;
+            Controller.requestTurn(lastEscapeTurn);
+            setState(ESCAPE_TURN);
             break;
         }
-        case TEST:
-        break;
+
+        case ESCAPE_TURN: {
+            if (!Controller.isIdle()) break;
+            setState(DRIVE);
+            break;
+        }
     }
 
-
     Controller.update();
+}
+
+float Exploration::chooseHeadingFromFrontArray(float FL, float F, float FR) {
+    float theta = Controller.getTheta();
+
+    // headings of each sensor
+    float headingL = wrapPi(theta + 30.0f * PI/180.0f);
+    float headingF = theta;
+    float headingR = wrapPi(theta - 30.0f * PI/180.0f);
+
+    float clearL = FL < COLLISION_FL  ? -1000.0f   : FL;
+    float clearF = F < COLLISION   ? -1000.0f   : F;
+    float clearR = FR < COLLISION_FR  ? -1000.0f  : FR;
+
+
+    // clear gaps were dominating so capping
+    if (clearL > 120.0f) clearL = 120.0f;
+    if (clearF > 120.0f) clearF = 120.0f;
+    if (clearR > 120.0f) clearR = 120.0f;
+
+    float gL = cosf(wrapPi(headingL - NORTH));
+    float gF = cosf(wrapPi(headingF - NORTH));
+    float gR = cosf(wrapPi(headingR - NORTH));
+
+    const float weightCLear = 1.0f;
+    const float weightGoal = 25.0f;
+
+    // calculate "scores"
+    float sFL = weightCLear * clearL + weightGoal * gL;
+    float sF  = weightCLear * clearF + weightGoal * gF + 3.0f; // bias forward
+    float sFR = weightCLear * clearR + weightGoal * gR;
+
+    if (sFL >= sF && sFL >= sFR) return headingL;
+    if (sFR >= sF && sFR >= sFL) return headingR;
+    return theta;
+}
+
+
+int Exploration::pickTurnDeg(float FL, float F, float FR) {
+
+    bool hitL = FL < COLLISION_FL;
+    bool hitC = F < COLLISION;
+    bool hitR = FR < COLLISION_FR;
+
+    if (hitL && hitC && hitR) return 90;
+    if (hitC && hitL)         return -90;
+    if (hitC && hitR)         return 90;
+    if (!hitC && hitL)        return -45;
+    if (!hitC && hitR)        return 45;
+    
+    if (hitC) {
+        return (FR > FL) ? -90 : 90;
+    }
+    return 0;
 }
