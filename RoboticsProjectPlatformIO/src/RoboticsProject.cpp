@@ -52,20 +52,24 @@ void loop() {
     // Explorer.startExploring();
 
     Explorer.startExploring();
+    // Controller.goToPose(200,200,0.0);
     // explorationActive = true;
   }
   if (JoystickDown == 0) {
     // Controllers::moveDistance(300.0, false);
     // Controller.requestTurnRightToCardinal();
     // Controller.goToPose(0, 1680, 180);
-    Controller.requestTurn(90.0);
+    Controller.requestTurn(180.0);
+    
+    // Controller.moveDistance(300, true);
   }
   if (JoystickLeft == 0) {
     // Controller.requestTurnLeftToCardinal();
     // Controller.goToPose(0, 0, 180);
     // Controller.getClosestCardinal(-46 * (PI/180));
-    Controller.align();
+    // Controller.align();
     // Controller.requestTurn(-90);
+    Controller.moveDistance(200.0f, true);
   }
   // Serial.println("Blaaah"); 
   // Controller.update();

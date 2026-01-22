@@ -38,7 +38,7 @@ Controllers::Controllers(Motors &motor, Gyro &gyro)
 }
 
 void Controllers::moveDistance(float target, bool forward) {
-    Serial.println("Turn degrees called");
+    // Serial.println("Turn degrees called");
     // set start vals to distance of motors
     startDistanceA = motors.getDistanceA();
     startDistanceB = motors.getDistanceB();
@@ -104,14 +104,20 @@ void Controllers::moveDistance(float target, bool forward) {
     goToHeading = atan2(dy, dx); // rads
 
     gotoStep = TURN1;
-    Serial.println((String)"goToPose Received: \r\n     dx: " + dx + "\r\n     dy: " + dy + "\r\n     ds: "+ goToDistance + "\r\n     heading: "+ goToHeading);
-    Serial.println((String)"Target pose: { x = " + xg + ", y = " + yg + ", thetag = " + thetag + "}");
+    // Serial.println((String)"goToPose Received: \r\n     dx: " + dx + "\r\n     dy: " + dy + "\r\n     ds: "+ goToDistance + "\r\n     heading: "+ goToHeading);
+    // Serial.println((String)"Target pose: { x = " + xg + ", y = " + yg + ", thetag = " + thetag + "}");
   }
 
   void Controllers::resetPose() {
     x = 0.0f;
     y = 0.0f;
     theta = 0.0f; // facing +x
+  }
+
+  void Controllers::startPose() {
+    x = 50.0f;
+    y = 50.0f;
+    theta = 0.0f;
   }
   
   float Controllers::getClosestCardinal(float theta) {
@@ -132,8 +138,8 @@ void Controllers::moveDistance(float target, bool forward) {
     float distA = motors.getDistanceA();
     float distB = motors.getDistanceB();
 
-    float dA = distA - prevDistA;
-    float dB = distB - prevDistB;
+    float dB = distA - prevDistA;
+    float dA = distB - prevDistB;
 
     prevDistA = distA;
     prevDistB = distB;
@@ -155,7 +161,7 @@ void Controllers::moveDistance(float target, bool forward) {
     y += ds * sinf(theta);
 
 
-    Serial.println((String)"POSE: [\r\n       x: "+x+", \r\n       y: " + y + ", \r\n   theta: "+ theta*(180/PI) + "\r\n]");
+    // Serial.println((String)"POSE: [       x: "+x+",        y: " + y + ",   theta: "+ theta*(180/PI) + "    ]");
   }
 
   void Controllers::requestTurnToHeading(float target) {
@@ -205,7 +211,7 @@ void Controllers::moveDistance(float target, bool forward) {
     leftSpeed = constrain(leftSpeed, 0.25f, baseWallSpeed+0.15f);
     rightSpeed = constrain(rightSpeed, 0.25f, baseWallSpeed+0.15f);
 
-    Serial.println((String)"WF: rightFront = " + rightFrontIR + ", rightRear = " + rightRearIR + ", \r\n distError = "+ distError+", angleError = " + angleError + ", correction  = " + correction  + "\r\n L="+leftSpeed+", R="+rightSpeed);
+    // Serial.println((String)"WF: rightFront = " + rightFrontIR + ", rightRear = " + rightRearIR + ", \r\n distError = "+ distError+", angleError = " + angleError + ", correction  = " + correction  + "\r\n L="+leftSpeed+", R="+rightSpeed);
     motors.setTargetSpeeds(leftSpeed, rightSpeed);
   }
 
@@ -248,7 +254,7 @@ void Controllers::moveDistance(float target, bool forward) {
       case ALIGN_TO_WALL: {
         float distance = (rightFrontIR + rightRearIR) * 0.5;
         if (distance > 20.0f) { 
-          Serial.println("Too far, setting back to wall follow"); 
+          // Serial.println("Too far, setting back to wall follow"); 
           setState(WALL_FOLLOWING); 
           break ;
         }
@@ -263,7 +269,7 @@ void Controllers::moveDistance(float target, bool forward) {
 
         motors.setTargetSpeeds(0.2f, 0.2f);
         alignCount = 0;
-        Serial.println((String)"rgightFront: " + rightFrontIR + ", rightRear: " + rightRearIR + ", offset: "+offset+", turnLeft: "+turnLeft+"\r\nleftDir: "+ leftDir + ", rightDit: " + rightDir);
+        // Serial.println((String)"rgightFront: " + rightFrontIR + ", rightRear: " + rightRearIR + ", offset: "+offset+", turnLeft: "+turnLeft+"\r\nleftDir: "+ leftDir + ", rightDit: " + rightDir);
         break;
       }
     }
@@ -272,7 +278,6 @@ void Controllers::moveDistance(float target, bool forward) {
   void Controllers::align() {
     setState(ALIGN_TO_WALL);
   }
-
 
   void Controllers::driveHeading(float targetHeadingRad, float baseSpeed){
     if (motors.getCurrentLeftDir() != 1 || motors.getCurrentRightDir() != 1) {
@@ -290,8 +295,8 @@ void Controllers::moveDistance(float target, bool forward) {
     float left = baseSpeed - steer;
     float right = baseSpeed + steer;
 
-    left = constrain(left, minPWM, 0.9f);
-    right = constrain(right, minPWM, 0.9f);
+    left = constrain(left, minPWM, 1.0f);
+    right = constrain(right, minPWM, 1.0f);
 
     motors.setTargetSpeeds(left, right);
 
@@ -380,13 +385,14 @@ void Controllers::moveDistance(float target, bool forward) {
         float fabsError = fabs(error);
 
         if (fabsError < turnTolerance) {
-          Serial.println("WITHIN TOLERANCE. STOPPING");
+          // Serial.println("WITHIN TOLERANCE. STOPPING");
           motors.stop();
           setState(IDLE);
           break;
         }
 
           // overshoot stop: if we crossed through zero, stop
+          
 
         if (turnErrorInit) {
           bool signFlip = (prevTurnError > 0.0f && error < 0.0f) ||
@@ -401,22 +407,14 @@ void Controllers::moveDistance(float target, bool forward) {
           }
         }
         
-        const float BIG_ERR = 20.0f * PI/180.0f; // 20 degrees
-        const float FAST_SPEED = 0.45f;          // tune
-        const float SLOW_MAX = 0.30f;            // cap slow phase so it doesn't crawl forever
-
         float speed;
 
-        if (fabsError > BIG_ERR) {
-          speed = FAST_SPEED;
-        } else  {
-          speed = Kp_turn * fabsError;
-          speed = constrain(speed, minPWM, SLOW_MAX);
-        }
+        speed = Kp_turn * fabsError;
+        
 
         speed =constrain(speed, minPWM, maxTurnSpeed);
 
-        Serial.println((String)"Error: " + error);
+        // Serial.println((String)"Error: " + error);
         motors.setTargetSpeeds(speed, speed);
         // Serial.println
         break;
@@ -484,7 +482,7 @@ void Controllers::moveDistance(float target, bool forward) {
       }
   }
       
-
+    
     motors.update();
   }
 

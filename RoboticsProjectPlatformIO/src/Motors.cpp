@@ -5,11 +5,16 @@
 
 Motors::Motors()
 : 
-MotorADir(P0_4),
-MotorBDir(P0_5),
+// pins were accidentally flipped in hardware
+// MotorADir(P0_4),
+// MotorBDir(P0_5),
+MotorADir(P0_5),
+MotorBDir(P0_4),
 
-MotorASpeed(P0_27),
-MotorBSpeed(P1_2),
+// MotorASpeed(P0_27),
+// MotorBSpeed(P1_2),
+MotorASpeed(P1_2),
+MotorBSpeed(P0_27),
 
 EncA(P1_11),
 EncB(P1_12)  
@@ -63,13 +68,13 @@ void Motors::emergencyStop() {
 
 
 float Motors::getDistanceA() {
-    float shaftRevs = ((float)EncCountA * 4.0) / (12 * 110);
+    float shaftRevs = ((float)EncCountA * 4.0) / (12 * GEAR_RATIO);
     return shaftRevs * wheelCircumferance;
 }
 
 
 float Motors::getDistanceB() {
-    float shaftRevs = ((float)EncCountB * 4.0) / (12 * 110);
+    float shaftRevs = ((float)EncCountB * 4.0) / (12 * GEAR_RATIO);
     return shaftRevs * wheelCircumferance;
 }
 
@@ -84,7 +89,7 @@ void Motors::transitionTo(STATES next) {
 
 void Motors::countPulseA() {
     EncCountA++;
-    if (EncCountA % (6 * 110) == 0) {
+    if (EncCountA % (6 * GEAR_RATIO) == 0) {
 
       ShaftRevA++;
     }
@@ -92,7 +97,7 @@ void Motors::countPulseA() {
 
 void Motors::countPulseB() {
     EncCountB++;
-    if (EncCountB % (6 * 110) == 0) {
+    if (EncCountB % (6 * GEAR_RATIO) == 0) {
 
       ShaftRevB++;
     }

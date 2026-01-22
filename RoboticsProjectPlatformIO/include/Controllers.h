@@ -20,20 +20,20 @@ class Controllers{
         
         float startAngle;
         
-        const float maxTurnSpeed = 0.4f;
+        const float maxTurnSpeed = 0.5f;
 
         bool obstacleDetected;
 
-        const float trackWidth = 112.0f;
+        const float trackWidth = 110.0f;
 
         const float Kp = 0.01;
         const float Kp_turn = 0.8f;
-        const float Kp_dist = 0.01f;
-        const float Kp_angle =  0.07f;
+        const float Kp_dist = 0.005f;
+        const float Kp_angle =  0.06f;
 
         const float tolerance = 0.0005;
         const float turnTolerance = 0.01;
-        const float minPWM = 0.25f;
+        const float minPWM = 0.3f;
 
         float prevTurnError = 0.0f;
         bool turnErrorInit = false;
@@ -42,8 +42,8 @@ class Controllers{
         int rightSign = 1;
 
         // robot local pose
-        float x = 0.0;
-        float y = 0.0;
+        float x = 50.0;
+        float y = 50.0;
         float theta = 0.0;
 
         float prevDistA;
@@ -54,7 +54,7 @@ class Controllers{
 
         void runGoToStep();
         // STATES
-        bool printStates = true;
+        bool printStates = false;
 
         enum STATES {
             IDLE,
@@ -73,8 +73,8 @@ class Controllers{
         float baseWallSpeed = 0.5f;
 
 
-        float K_heading = 0.2f;
-        float maxSteer = 0.2f;
+        float K_heading = 0.22f;
+        float maxSteer = 0.22f;
 
 
         float wallDistanceHistory[3];
@@ -141,10 +141,10 @@ class Controllers{
 
         int alignCount = 0;
 
-
         
     public:
 
+        void startPose();
         void align();
         void driveHeading(float targetHeadingRad, float baseSpeed);
 

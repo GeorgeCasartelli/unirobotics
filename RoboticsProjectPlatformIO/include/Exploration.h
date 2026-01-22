@@ -17,9 +17,12 @@ class Exploration {
       DRIVE,          // 3
       AVOID,          // 4
       WALL_FOLLOW,    // 5
+      ESCAPE,
       ESCAPE_STOP,
       ESCAPE_REVERSE,
-      ESCAPE_TURN
+      ESCAPE_TURN,
+      CELLY,
+      CELLY_WAIT
     };
 
     String stateToString(ExplorationStates state) {
@@ -33,9 +36,13 @@ class Exploration {
         case ESCAPE_STOP: return "ESCAPE_STOP";
         case ESCAPE_REVERSE: return "ESCAPE_REVERSE";
         case ESCAPE_TURN: return "ESCAPE_TURN";
+        case CELLY: return "CELLY";
+        case CELLY_WAIT: return "CELLY_WAIT";
         default: return "UNKNOWN";
       };
     }
+
+    bool started = false;
 
     int pendingTurn = 0;
     int pickTurnDeg(float clearFL, float clearF, float clearFR);
@@ -45,12 +52,18 @@ class Exploration {
     int clearFLCount = 0;
     int clearFRCount = 0;
 
-    float NORTH = PI/2;
+    const float NORTH = PI/2;
+    const float SOUTH = -PI/2;
+
+    float GOAL_DIR = NORTH;
 
     const float COLLISION = 16.0f;
-    const float COLLISION_FL = 14.0f;
-    const float COLLISION_FR = 14.0f;
+    const float COLLISION_FL = 15.0f;
+    const float COLLISION_FL_BAD = 6.0f;
+    const float COLLISION_FR = 15.0f;
+    const float COLLISION_FR_BAD = 6.0f;
 
+    const float RIGHT_OPEN_THRESHOLD = 20.0f;
     const float WALL_DIST = 9.0f;
 
     // odom
@@ -59,7 +72,8 @@ class Exploration {
     float lastTheta = 0.0f;
     int stuckCount =0;
 
-    float chooseHeadingFromFrontArray(float FL, float F, float FR);
+    int rCount = 0;
+    float chooseHeadingFromFrontArray(float FL, float F, float FR, float R, float IR_L, float IR_R);
 
     Sensors &sensors;
     Controllers &Controller;
@@ -77,6 +91,57 @@ class Exploration {
 
     bool targetInit = false;
     float targetFiltered = 0.0f;
+
+    int committedTurnDirection = 0;
+    uint8_t escapeStep = 0;
+
+    float sidePenaltyFiltered = 0.0f;
+
+
+
+    // MAP
+    bool toCell(float x_mm, float y_mm, int &cx, int &cy);
+    float visitedPenaltyForHeading(float x_mm, float y_mm, float headingRad);
+    void markVisited(float x, float y);
+    void markObstacles(float x, float y, float theta);
+  
+    static constexpr int CELL_MM = 100; // grid size
+
+    // number of columns
+    static constexpr int NX      = 14;
+    static constexpr int NY      = 20;
+    int GOAL    = CELL_MM * NY - 400; // first goal
+    
+    bool GOAL_1_CELLY = false;
+    bool GOAL_2_CELLY = false;
+
+
+    uint8_t map[NX][NY] = {0};
+
+    int lastCellX = -1;
+    int lastCellY = -1;
+
+    float lastMarkX = 0.0f;
+    float lastMarkY = 0.0f;
+
+    void printVisitedGrid();
+
+    bool wallCloseLeft = false;
+    bool wallCloseRight = false;
+
+    int avoidCount = 0;
+    int lastAvoidTurn = 0;
+    
+    float turnStartTheta = 0.0f;
+    int turnStuckCount = 0;
+
+    float escapeStartX = 0.0f;
+    float escapeStartY = 0.0f;
+    int escapeStuckCount = 0;
+
+    const int TURN_STUCK_LIMIT = 180;
+    const int ESCAPE_STUCK_LIMIT = 180;
+
   public:
     Exploration(Sensors &sensors, Controllers &Controller);
     

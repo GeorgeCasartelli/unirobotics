@@ -28,6 +28,7 @@ public:
     float getFrontRightDist() { return distanceFrontRight; }
 
     float getRightAvg();
+    
     // String getValues() {
 
     // }

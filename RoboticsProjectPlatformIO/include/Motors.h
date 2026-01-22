@@ -59,6 +59,8 @@ class Motors{
         int8_t desiredLeftDir = 0;
         int8_t desiredRightDir = 0;
 
+        const uint16_t GEAR_RATIO = 110;
+
         // bool isChangingDir = false;
 
         bool printStatement = false;
