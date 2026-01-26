@@ -7,8 +7,8 @@
 
 
 struct RightDistances {
-    float front;
-    float rear;
+    float right;
+    float left;
 };
 
 class Sensors {
@@ -16,45 +16,41 @@ public:
     Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro);
 
     void setup();
-    void update();   // call every loop
+    void update();   
 
-    // Raw values (smoothed)
-    float getFrontDist();  // mm
-    float getRightDist();  // mm
-    float getLeftDist();
+    // dist queries
+    float getFrontDist() const { return distanceFront; }  // mm
+    float getFrontLeftDist() const { return distanceFrontLeft; }
+    float getFrontRightDist() const { return distanceFrontRight; }
+    float getRightDist() const { return distanceRight; }  // mm
+    // float getLeftDist();
     RightDistances getRightDist_IR();
-    
-    float getFrontLeftDist() { return distanceFrontLeft; }
-    float getFrontRightDist() { return distanceFrontRight; }
 
     float getRightAvg();
-    
-    // String getValues() {
 
-    // }
+    float getRightIRFiltered() const;
+
 
 private:
-    Ultrasonics &US;
-    Infrareds &IR;
+    // hw refs
+    Ultrasonics &ultrasonics;
+    Infrareds &infrareds;
     Gyro &GYRO;
 
-    float distanceFront;
-    float distanceRight;
-    float distanceFrontLeft;
-    float distanceFrontRight;
+    // sensor readings
+    float distanceFront = 0.0f;
+    float distanceRight = 0.0f;
+    float distanceFrontLeft = 0.0f;
+    float distanceFrontRight = 0.0f;
     
-    float* distanceArray;
-
-    RightDistances rightIRs;
-    
-    int bufferIndex;
-    bool bufferFull;
+    RightDistances irArray = {0.0f, 0.0f};
 
     static constexpr int BUFFER_SIZE = 20;
-
-    float distanceBufferIR[BUFFER_SIZE];
-
-    void addReading(float reading);
+    float irBuffer[BUFFER_SIZE] = {0};
+    int bufferIndex = 0;
+    bool bufferFull = false;
+    
+    void addIRReading(float reading);
 };
 
 

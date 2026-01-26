@@ -21,10 +21,9 @@ EncB(P1_12)
 { };
 
 // PUBLIC METHODS
-
 void Motors::setup(mbed::InterruptIn &interrupt) {
-    MotorASpeed.period_us(10);
-    MotorBSpeed.period_us(10);
+    MotorASpeed.period_us(PWM_PERIOD_US);
+    MotorBSpeed.period_us(PWM_PERIOD_US);
 
     MotorASpeed.write(0.0f);
     MotorBSpeed.write(0.0f);
@@ -35,6 +34,9 @@ void Motors::setup(mbed::InterruptIn &interrupt) {
 
     lastUpdateUs = micros();
 }  
+
+
+// =================== motion ctrl==============
 
 void Motors::setTargetSpeeds(float left, float right) {
     if (motorState == EMERGENCY || motorState == CHANGING_DIR)
@@ -49,7 +51,7 @@ void Motors::setDirection(int8_t leftdir, int8_t rightdir) {
     desiredLeftDir = leftdir;
     desiredRightDir = rightdir;
     
-    transitionTo(CHANGING_DIR);
+    setState(CHANGING_DIR);
     targetSpeedLeft = 0.0f;
     targetSpeedRight = 0.0f;
     
@@ -62,47 +64,78 @@ void Motors::stop(){
 
 
 void Motors::emergencyStop() {
-    transitionTo(EMERGENCY);
+    setState(EMERGENCY);
 };
 
 
+// ================== api getters =====================
 
 float Motors::getDistanceA() {
-    float shaftRevs = ((float)EncCountA * 4.0) / (12 * GEAR_RATIO);
-    return shaftRevs * wheelCircumferance;
+    float shaftRevs = ((float)EncCountA * 4.0) / (ENCODER_PULSES * GEAR_RATIO);
+    return shaftRevs * WHEEL_CIRCUMFERENCE;
 }
 
 
 float Motors::getDistanceB() {
-    float shaftRevs = ((float)EncCountB * 4.0) / (12 * GEAR_RATIO);
-    return shaftRevs * wheelCircumferance;
-}
-
-// PRIVATES
-
-void Motors::transitionTo(STATES next) {
-    if (motorState == next) return;
-    motorState = next;
+    float shaftRevs = ((float)EncCountB * 4.0) / (ENCODER_PULSES * GEAR_RATIO);
+    return shaftRevs * WHEEL_CIRCUMFERENCE;
 }
 
 
+// =============== miani loop ==============
 
-void Motors::countPulseA() {
-    EncCountA++;
-    if (EncCountA % (6 * GEAR_RATIO) == 0) {
+void Motors::update() {
 
-      ShaftRevA++;
+
+    //calculate dt
+    uint32_t now = micros();
+    dt = (now - lastUpdateUs) * 1e-6; //calculate dt in us
+    lastUpdateUs = now;
+
+    if (dt <= 0.0f || dt > 0.1f) { // keep above zero and ignore pauses
+        dt = 0.0f;
     }
-}
 
-void Motors::countPulseB() {
-    EncCountB++;
-    if (EncCountB % (6 * GEAR_RATIO) == 0) {
-
-      ShaftRevB++;
+    // state transition 
+    if (motorState != prevState) {
+        onEnterState(motorState);
+        prevState = motorState;
     }
+
+    // debug prints
+    if (motorState != STOPPED) {
+        if (printStatement) Serial.println((String)"Motor State: " + stateToString(motorState));
+    }
+
+    switch (motorState) {
+        case RUNNING: {
+            handleRunning(); // done
+            break;
+        }
+
+        case STOPPED: {
+            handleStopped(); // done
+            break;
+        }
+
+        case CHANGING_DIR: {
+            
+            handleChangingDir();
+            break;
+        }
+        
+        case EMERGENCY:{
+
+        handleEmergency();
+        break;
+        }
+    }
+
 }
 
+
+
+// ============  state machine Handlers ============
 
 void Motors::handleRunning() {
     // calculate speed errors
@@ -127,49 +160,45 @@ void Motors::handleRunning() {
     MotorBSpeed.write(currentSpeedRight);
 
     bool atTarget = 
-        fabs(errorLeft)        < 0.00001f &&
-        fabs(errorRight)       < 0.00001f
+        fabs(errorLeft)        < SPEED_TOLERANCE &&
+        fabs(errorRight)       < SPEED_TOLERANCE
     ;
 
     bool targetisZero = 
-        fabs(targetSpeedLeft)  < 0.00001f && 
-        fabs(targetSpeedRight) < 0.00001f
+        fabs(targetSpeedLeft)  < SPEED_TOLERANCE && 
+        fabs(targetSpeedRight) < SPEED_TOLERANCE
     ;
 
     if (atTarget && targetisZero) {
-        transitionTo(STOPPED);
+        setState(STOPPED);
     }
 }
 
 void Motors::handleChangingDir() {
-    // speed down
 
+    // decel 
     float decelL = maxDecel * dt;
     float decelR = maxDecel * dt;
 
     bool moving = false;
-
     
+    // smooth decel
     if (currentSpeedLeft > 0.0f) {
         currentSpeedLeft -= decelL;
         if (currentSpeedLeft < 0.0f) currentSpeedLeft = 0.0f;
         moving = true;
     }
-
     if (currentSpeedRight > 0.0f) {
         currentSpeedRight -= decelR;
         if (currentSpeedRight < 0.0f) currentSpeedRight = 0.0f;
         moving = true;
     }
-    
-    // constrainCurrentSpeeds();
 
     MotorASpeed.write(currentSpeedLeft);
     MotorBSpeed.write(currentSpeedRight);
     
-    if (moving) return;
+    if (moving) return; // dont change direction if still moving
     
-
     // apply new directions when stopped
     currentLeftDir = desiredLeftDir;
     currentRightDir = desiredRightDir;
@@ -177,36 +206,24 @@ void Motors::handleChangingDir() {
     MotorADir = (currentLeftDir * -1) + 1;
     MotorBDir = currentRightDir;
 
-    transitionTo(STOPPED);
+    setState(STOPPED);
 }
 
 void Motors::handleStopped() {
     if (targetSpeedLeft > 0.0f || targetSpeedRight > 0.0f) { 
-        transitionTo(RUNNING);
+        setState(RUNNING);
     }
 }
 
 void Motors::handleEmergency() {
     //nothing to see here!
-
 }
 
-void Motors::constrainCurrentSpeeds(){
-    // function to clamp speeds between 0 and 1
-    currentSpeedLeft = constrain(currentSpeedLeft, 0.0f, 1.0f);
-    currentSpeedRight = constrain(currentSpeedRight, 0.0f, 1.0f);
-}
+// =========== state machine transitions =======================
 
-const char* Motors::stateToString(STATES s) {
-    switch (s) {
-        case RUNNING: return "RUNNING";
-        // case RAMP_UP: return "RAMP_UP";
-        // case RAMP_DOWN: return "RAMP_DOWN";
-        case STOPPED: return "STOPPED";
-        case CHANGING_DIR: return "CHANGING_DIR";
-        case EMERGENCY: return "EMERGENCY";
-        default: return "UNKNOWN";
-    };
+void Motors::setState(STATES next) {
+    if (motorState == next) return;
+    motorState = next;
 }
 
 void Motors::onEnterState(STATES state) {
@@ -239,63 +256,41 @@ void Motors::onEnterState(STATES state) {
     }
 }
 
-void Motors::update() {
-
-
-    //calculate dt
-    uint32_t now = micros();
-    dt = (now - lastUpdateUs) * 1e-6; //calculate dt in us
-    lastUpdateUs = now;
-
-    if (dt <= 0.0f || dt > 0.1f) { // keep above zero and ignore pauses
-        dt = 0.0f;
-    }
-    // do entry work if state has changed
-    if (motorState != prevState) {
-        onEnterState(motorState);
-        prevState = motorState;
-    }
-
-    // debug prints
-    // if (motorState != STOPPED) {
-        if (printStatement) Serial.println((String)"Motor State: " + stateToString(motorState));
-    // }
-
-
-    // Serial.println(
-    //     (String)"Values:\r\nerrorLeft: " + errorLeft + 
-    //     "\r\nerrorRight: "+ errorRight+
-    //     "\r\ncurrentSpeedLeft: "+currentSpeedLeft+
-    //     "\r\ncurrentSpeedRight: "+currentSpeedRight+
-    //     "\r\ntargetSpeedLeft: "+targetSpeedLeft+
-    //     "\r\ntargetSpeedRight: "+targetSpeedRight+ 
-    //     "\r\nstepLeft: "+stepLeft+
-    //     "\r\nstepRight: "+stepRight
-    // );
-
-
-    switch (motorState) {
-        case RUNNING: {
-            handleRunning(); // done
-            break;
-        }
-
-        case STOPPED: {
-            handleStopped(); // done
-            break;
-        }
-
-        case CHANGING_DIR: {
-            
-            handleChangingDir();
-            break;
-        }
-        
-        case EMERGENCY:{
-
-        handleEmergency();
-        break;
-        }
-    }
-
+const char* Motors::stateToString(STATES s) {
+    switch (s) {
+        case RUNNING: return "RUNNING";
+        // case RAMP_UP: return "RAMP_UP";
+        // case RAMP_DOWN: return "RAMP_DOWN";
+        case STOPPED: return "STOPPED";
+        case CHANGING_DIR: return "CHANGING_DIR";
+        case EMERGENCY: return "EMERGENCY";
+        default: return "UNKNOWN";
+    };
 }
+
+// ===================== encoder interruts =====================
+
+void Motors::countPulseA() {
+    EncCountA++;
+    if (EncCountA % (6 * GEAR_RATIO) == 0) {
+
+      ShaftRevA++;
+    }
+}
+
+void Motors::countPulseB() {
+    EncCountB++;
+    if (EncCountB % (6 * GEAR_RATIO) == 0) {
+
+      ShaftRevB++;
+    }
+}
+
+
+void Motors::constrainCurrentSpeeds(){
+    // function to clamp speeds between 0 and 1
+    currentSpeedLeft = constrain(currentSpeedLeft, 0.0f, 1.0f);
+    currentSpeedRight = constrain(currentSpeedRight, 0.0f, 1.0f);
+}
+
+

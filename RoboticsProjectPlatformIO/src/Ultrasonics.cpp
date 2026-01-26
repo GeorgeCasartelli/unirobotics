@@ -13,6 +13,7 @@ US_4(P1_15)
 }
 
 void Ultrasonics::runtime(int val) {
+    // set pin to output 
     sensors[val]->output();
     *sensors[val] = 0;  // ensure pin is low
     *sensors[val] = 1;
@@ -20,6 +21,7 @@ void Ultrasonics::runtime(int val) {
     wait_us(10);        // wait 10us
     *sensors[val] = 0;  // set low
 
+    // set pin to input and wait (WARNING blocking function. if program not running check physical wiring of ultrasonic)
     sensors[val]->input();
     while (*sensors[val] == 0) {  };
     timer.start();

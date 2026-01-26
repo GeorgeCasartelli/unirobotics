@@ -6,93 +6,65 @@
 
 
 Sensors::Sensors(Ultrasonics &us, Infrareds &ir, Gyro &gyro) 
-    : US(us),
-      IR(ir),
+    : ultrasonics(us),
+      infrareds(ir),
       GYRO(gyro)
 {
-    // distanceRight = 0;
-    // distanceFront = 0;
-    // RightDistances rightIRs;
-    bufferIndex = 0;
-    bufferFull = false;
+
 }
 void Sensors::setup() {
-    US.setup();
+    ultrasonics.setup();
     GYRO.begin();
 }
 
 void Sensors::update() {
     GYRO.update();
-    US.runtime(0);
-    US.runtime(1);
-    US.runtime(2);
-    US.runtime(3);
 
-    IR.runtime();
+    ultrasonics.runtime(0); // right
+    ultrasonics.runtime(1); // front
+    ultrasonics.runtime(2); // front left
+    ultrasonics.runtime(3); // front right
 
-    distanceFront = US.distances[1];
-    distanceRight = US.distances[0];
-    distanceFrontLeft = US.distances[2];
-    distanceFrontRight = US.distances[3];
-    // distanceFront = 0.0f;
-    // distanceRight = 0.0f;
-    distanceArray = IR.getDistances();
+    infrareds.runtime();
 
-    rightIRs.front = distanceArray[0];
-    rightIRs.rear = distanceArray[1];
+    // read ultrasonic distances
+    distanceFront = ultrasonics.distances[1];
+    distanceRight = ultrasonics.distances[0];
+    distanceFrontLeft = ultrasonics.distances[2];
+    distanceFrontRight = ultrasonics.distances[3];
+   
+    // read IR distances
+    float* irDistances = infrareds.getDistances();
+    irArray.right = irDistances[0];
+    irArray.left = irDistances[1];
 
-    // if (distanceArray[0] < 6000) {
-    //     rightIRs.front = distanceArray[0];
-    // }
-    // if (distanceArray[1] < 6000) {
-    //     rightIRs.rear = distanceArray[1];
-    // }
-    // Serial.println((String)"distanceFront: "+ distanceFront + "  " + distanceRight);
-
-    // Serial.println((String)"front: " + rightIRs.front + " rear: " + rightIRs.rear);
-    // Serial.println((String)"Front Left: "+ distanceFrontLeft + ", frontRight: " + distanceFrontRight);
-    addReading(rightIRs.front);
+    addIRReading(irArray.right);
 }
 
-// float Sensors::getLeftDist() {
-//     return distanceLeft_IR;
-// }
 
-RightDistances Sensors::getRightDist_IR() {  
-    // Serial.println((String)"In sensors class rightIRs is: " + rightIRs.front + " " + rightIRs.rear);
-    return rightIRs;
-}
-
-void Sensors::addReading(float reading) {
-    if (bufferFull) {
-        float lastValue = distanceBufferIR[(bufferIndex + BUFFER_SIZE - 1) % BUFFER_SIZE];
-        // if (fabs(reading - lastValue) > 4000) return;
-    }
-
-    distanceBufferIR[bufferIndex] = reading;
-    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE; // circular point
-    if (bufferIndex == 0) bufferFull = true;
-}
-
-float Sensors::getRightAvg() {
-    float sum = 0; 
-    if (bufferFull) { // return avg if buffer full
-        // Serial.println("Buffer full"); 
-        for (int i = 0; i < BUFFER_SIZE; i++) { 
-            sum+= distanceBufferIR[i]; 
-        } 
-        // Serial.println((String)distanceBufferIR[1]); 
-        return sum / BUFFER_SIZE; 
-    } else { 
-        return rightIRs.front; // else return reading 
+// filtering
+void Sensors::addIRReading(float reading) {    
+    // add to circular buffer
+    irBuffer[bufferIndex] = reading;
+    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;
+    
+    // mark buffer as full once we've wrapped around
+    if (bufferIndex == 0) {
+        bufferFull = true;
     }
 }
 
-float Sensors::getRightDist() {
-
-    return distanceRight;
-}
-
-float Sensors::getFrontDist() {
-    return distanceFront;
+float Sensors::getRightIRFiltered() const {
+    // return raw if buffer not full
+    if (!bufferFull) {
+        return irArray.right;
+    }
+    
+    // get avg
+    float sum = 0.0f;
+    for (int i = 0; i < BUFFER_SIZE; i++) {
+        sum += irBuffer[i];
+    }
+    
+    return sum / BUFFER_SIZE;
 }
