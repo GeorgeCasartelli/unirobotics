@@ -1,5 +1,4 @@
 
-// Gyro.cpp
 #include <Gyro.h>
 
 bool Gyro::begin() {
